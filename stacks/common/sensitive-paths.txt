@@ -1,0 +1,51 @@
+# Marwan SAT — المسارات الحساسة العامة (الميثاق §5.3 و§13.3)
+# أي مهمة في المسار الخفيف تلمس أحد هذه المسارات تُعاد إلى المسار الكامل.
+# سطر = نمط glob. نمط بلا "/" يطابق اسم الملف في أي مجلد.
+# "content: <regex>" يطابق محتوى الملف المتغيّر بدل مساره.
+
+# الوحدات المالية (ملفات ومجلدات)
+**/*payment*
+**/*payment*/**
+**/*ledger*
+**/*ledger*/**
+**/*wallet*
+**/*wallet*/**
+**/*invoice*
+**/*invoice*/**
+**/*loan*
+**/*loan*/**
+**/*installment*
+**/*installment*/**
+**/*balance*
+**/*balance*/**
+**/*billing*
+**/*billing*/**
+
+# المصادقة والصلاحيات (ملفات ومجلدات: auth.ts و lib/auth.ts و auth.config.ts لا تقل حساسية عن مجلد auth/)
+**/auth/**
+**/*auth*
+**/*auth*/**
+**/*login*
+**/*login*/**
+**/*session*
+**/*session*/**
+**/*otp*
+**/*otp*/**
+**/*password*
+**/*password*/**
+**/*jwt*
+**/*permission*
+**/*permission*/**
+**/*role*
+**/*roles*/**
+
+# الأسرار والإعدادات
+.env*
+**/*.pem
+**/*.key
+
+# الحوكمة
+.team/**
+.agents/**
+.claude/**
+.github/workflows/**

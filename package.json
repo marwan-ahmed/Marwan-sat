@@ -1,0 +1,48 @@
+{
+  "name": "marwan-sat",
+  "version": "0.1.0",
+  "description": "Marwan SAT — Marwan Software Agents Team: a governed seven-agent software team (tech manager, request interpreter, architect, security auditor, test author, implementer, adversarial reviewer) with deterministic gates, installable in any project. Google Antigravity first.",
+  "type": "module",
+  "bin": {
+    "sat": "cli/sat.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "files": [
+    "cli/",
+    "core/",
+    "charter/",
+    "stacks/",
+    "adapters/",
+    "ci/",
+    "README.md",
+    "README.en.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md"
+  ],
+  "keywords": [
+    "ai-agents",
+    "multi-agent",
+    "antigravity",
+    "claude-code",
+    "software-team",
+    "governance",
+    "appsec",
+    "arabic"
+  ],
+  "author": "Marwan Ahmed (مروان أحمد) (https://github.com/marwan-ahmed)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marwan-ahmed/marwan-sat.git"
+  },
+  "homepage": "https://github.com/marwan-ahmed/marwan-sat#readme",
+  "bugs": {
+    "url": "https://github.com/marwan-ahmed/marwan-sat/issues"
+  }
+}

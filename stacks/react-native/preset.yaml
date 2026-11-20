@@ -1,0 +1,54 @@
+# Marwan SAT — إعدادات المشروع (ملك المشروع: لا يغيّره sat update أبداً)
+# المرجع: .team/CHARTER.md §13 · المخطط: .team/schemas/project.schema.json
+# الصيغة: مجموعة جزئية من YAML (بلا | ولا > ولا anchors).
+sat_version: "{{sat_version}}"
+
+project:
+  name: "{{name}}"
+  stack: react-native
+  platform: {{platform}}
+
+git:
+  base_branch: {{base_branch}}
+  task_branch_prefix: sat/
+
+commands:
+  install: {{pm_install}}
+  typecheck: {{pm_exec}} tsc --noEmit
+  lint: {{pm_exec}} eslint .
+  build: null
+  test: {{pm_run}} test
+  start: null
+  extra: []                   # لمشاريع Expo: ["npx expo-doctor"]
+
+paths:
+  tests: ["__tests__/**", "e2e/**", "**/*.test.*", "**/*.spec.*"]
+  sensitive_extra: []
+
+security:
+  profile: mobile
+  attack_env: none            # تطبيقات الهاتف: تدقيق ساكن وفق MASVS؛ الواجهة الخلفية تُدقَّق بملف web
+  env_up: null
+  env_down: null
+  seed: .team/seed/
+  constitution: null
+  require_scanners: false
+  scanners:
+    secrets: gitleaks git --no-banner --redact --exit-code 1
+    sast: semgrep scan --config p/default --error --metrics=off --quiet
+    dependencies: {{pm_audit}}
+
+gates:
+  approval: agent
+
+guard:
+  no_task_policy: ask
+
+limits:
+  question_rounds: 2
+  verify_failures: 2
+  fix_cycles: 2
+  max_credits_per_task: null
+
+timeouts:
+  step_minutes: 20

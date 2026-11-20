@@ -1,0 +1,9 @@
+# Keep LF everywhere: SAT hashes managed files and runs the same scripts on every OS.
+* text=auto eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+*.tpl text eol=lf

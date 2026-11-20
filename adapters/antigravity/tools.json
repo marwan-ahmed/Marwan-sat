@@ -1,0 +1,15 @@
+{
+  "_note": "Antigravity tool names used in generated agent files. Source: antigravity.google/docs/subagents and /docs/hooks (checked 2026-11-20). The docs warn that a misspelled or unmapped tool name can hang a subagent: after `sat init`, open each agent once in Antigravity. If your Antigravity version names a tool differently, edit this map in the SAT repository (not in a project) and run `sat update`.",
+  "capabilities": {
+    "read": ["view_file"],
+    "search": ["grep_search"],
+    "write": ["write_to_file", "replace_file_content"],
+    "shell": ["run_command"],
+    "delegate": ["invoke_subagent"]
+  },
+  "models": {
+    "strong": "pro",
+    "fast": "flash",
+    "session": "inherit"
+  }
+}

@@ -1,0 +1,21 @@
+# Marwan SAT — المسارات الحساسة لمشاريع Laravel (تُضاف إلى القائمة العامة)
+
+# نقاط الدخول من جهة الخادم والصلاحيات
+routes/**
+app/Http/Controllers/**
+app/Http/Middleware/**
+app/Http/Requests/**
+app/Policies/**
+app/Providers/AuthServiceProvider.php
+bootstrap/app.php
+
+# مخطط البيانات
+database/migrations/**
+
+# الإعدادات والمكتبات
+config/auth.php
+config/sanctum.php
+config/cors.php
+config/session.php
+composer.json
+composer.lock

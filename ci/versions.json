@@ -1,0 +1,4 @@
+{
+  "_note": "Pinned tool versions used by the generated CI workflow. gitleaks asset name pattern verified against github.com/gitleaks/gitleaks/releases on 2026-11-20.",
+  "gitleaks": "8.30.1"
+}

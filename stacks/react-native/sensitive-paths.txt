@@ -1,0 +1,23 @@
+# Marwan SAT — المسارات الحساسة لمشاريع React Native / Expo (تُضاف إلى القائمة العامة)
+
+# الإعدادات والصلاحيات
+app.json
+app.config.*
+eas.json
+android/app/src/main/AndroidManifest.xml
+android/app/build.gradle*
+ios/*/Info.plist
+ios/*/*.entitlements
+
+# الاعتماديات
+package.json
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+bun.lock
+
+# الشبكة والمصادقة والتخزين
+**/api/**
+**/network/**
+**/storage/**

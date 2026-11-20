@@ -1,0 +1,26 @@
+# Marwan SAT — المسارات الحساسة لمشاريع Next.js (تُضاف إلى القائمة العامة)
+
+# نقاط الدخول من جهة الخادم
+**/app/api/**
+**/pages/api/**
+**/actions/**
+middleware.*
+proxy.*
+content: ^\s*["']use server["']
+
+# مخطط البيانات والترحيلات
+drizzle/**
+**/drizzle/**
+prisma/**
+**/schema.prisma
+**/db/schema/**
+**/db/schema.*
+
+# الإعدادات والمكتبات
+next.config.*
+package.json
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+bun.lock
