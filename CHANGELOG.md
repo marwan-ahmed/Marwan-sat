@@ -2,6 +2,23 @@
 
 يتبع هذا السجل [الترقيم الدلالي](https://semver.org/lang/ar/). الإصدارات `0.x` تجريبية حتى تنجح التجربة الأولى (الميثاق §17).
 
+## [0.2.0] — 2026-11-21
+
+### تغيّر (يكسر التوافق)
+- **أسماء الوكلاء السبعة صارت تبدأ بـ`marwan-sat-`:** `marwan-sat-tech-manager` و`marwan-sat-request-interpreter` و`marwan-sat-architect` و`marwan-sat-security-auditor` و`marwan-sat-test-author` و`marwan-sat-implementer` و`marwan-sat-adversarial-reviewer`. السببان:
+  - Antigravity يحتفظ بوكيل واحد فقط عند تكرار الاسم، والاسم العام مثل `tech-manager` قد يتعارض مع وكيل من إضافة أو على مستوى الجهاز.
+  - الاسم يحمل اسم المنتج في كل مكان يظهر فيه الوكيل.
+- تغيّرت معه أسماء ملفات الأدوار في `.team/roles/`، وتعليمات التفويض عند المدير التقني، ورسائل «الخطوة التالية» في `phase`.
+
+### الترقية من 0.1.x
+1. أكمل أي مهمة جارية أو ألغِها أولاً.
+2. `npx github:marwan-ahmed/marwan-sat#v0.2.0 update`: يحذف ملفات الوكلاء والأدوار القديمة تلقائياً، ويكتب الجديدة.
+3. احفظ ملفات SAT وحدها: `git add .team .agents .github/workflows/sat-verify.yml .gitignore` ثم `git commit -m "chore: update Marwan SAT to 0.2.0"`.
+4. في Antigravity اختر `marwan-sat-tech-manager` من جديد. التطبيق يعود إلى الوكيل الافتراضي حين يُحذف الوكيل المختار.
+
+### أُصلح (التوثيق)
+- **مكان منتقي الوكلاء:** منذ Antigravity 2.29 صار منتقي الوكلاء داخل زر النموذج أسفل مربع الكتابة، لا قائمة مستقلة باسم Main Agent فوقه. صُحّح ذلك في README والدليل ورسائل `init`.
+
 ## [0.1.3] — 2026-11-21
 
 ### أُصلح

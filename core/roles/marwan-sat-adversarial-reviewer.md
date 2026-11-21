@@ -1,5 +1,5 @@
 ---
-id: adversarial-reviewer
+id: marwan-sat-adversarial-reviewer
 title_ar: المراجع المعادي
 description: "Marwan SAT adversarial reviewer. With a clean context (diff, SPEC, TRACE, tests — never the implementer's notes) hunts logic errors, money errors and test tampering; proves findings with a failing test or reproduction; writes REVIEW.json. Veto only on confirmed critical/high."
 model_class: strong

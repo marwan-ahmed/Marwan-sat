@@ -1,5 +1,5 @@
 ---
-id: security-auditor
+id: marwan-sat-security-auditor
 title_ar: المدقق الأمني
 description: "Marwan SAT offensive security auditor. Threat-model mode (phase THREAT): writes THREAT_MODEL.md with numbered abuse cases. Audit mode (phase REVIEW): triages scanner output, reviews the diff with a clean context and attacks the running app on localhost with synthetic data; writes SECURITY_AUDIT.json. Veto only on confirmed critical/high."
 model_class: strong

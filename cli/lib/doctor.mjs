@@ -11,7 +11,7 @@ import { HOOK_KEY } from '../../adapters/antigravity/generate.mjs';
 import { SAT_PATHS, locallyModified, satVersion } from './install.mjs';
 import { satCommand } from './invoke.mjs';
 
-const ROLE_IDS = ['tech-manager', 'request-interpreter', 'architect', 'security-auditor', 'test-author', 'implementer', 'adversarial-reviewer'];
+const ROLE_IDS = ['tech-manager', 'request-interpreter', 'architect', 'security-auditor', 'test-author', 'implementer', 'adversarial-reviewer'].map((r) => `marwan-sat-${r}`);
 
 export function doctor({ root, satRoot, run = true }) {
   const results = [];

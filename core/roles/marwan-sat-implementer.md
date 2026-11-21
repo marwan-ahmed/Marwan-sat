@@ -1,5 +1,5 @@
 ---
-id: implementer
+id: marwan-sat-implementer
 title_ar: المنفّذ
 description: "Marwan SAT implementer — the single code writer. Implements one TASKS.json item at a time, only inside its allowed_write paths, until the frozen tests and verify pass on a clean commit. Never edits tests or specs; raises a CHANGE_REQUEST instead."
 model_class: fast

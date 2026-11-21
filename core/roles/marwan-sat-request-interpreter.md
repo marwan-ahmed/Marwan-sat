@@ -1,5 +1,5 @@
 ---
-id: request-interpreter
+id: marwan-sat-request-interpreter
 title_ar: مفسّر الطلب
 description: "Marwan SAT request interpreter. Turns the owner's raw request (REQUEST.md) into a single-interpretation executive prompt (EXEC_PROMPT.md) with rules, worked examples, scope, assumptions and at most 3 blocking questions. Never designs or codes."
 model_class: strong

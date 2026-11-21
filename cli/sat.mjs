@@ -120,7 +120,7 @@ function cmdInit(root, opts) {
   console.log(`       git add ${SAT_PATHS.join(' ')}`);
   console.log(`       git commit -m "chore: install Marwan SAT ${version}"`);
   console.log('  4) Turn on branch protection for the main branch on GitHub.');
-  console.log('  5) Start in the Antigravity app: pick the tech-manager agent and send "New task: <your request>" (Arabic works too).');
+  console.log('  5) Start in the Antigravity app: pick the marwan-sat-tech-manager agent (in the model menu) and send "New task: <your request>" (Arabic works too).');
   if (!existsSync(join(root, 'AGENTS.md'))) console.log('  ! No AGENTS.md: consider adding one for project-specific rules (for example from the arabic-agents template).');
 }
 

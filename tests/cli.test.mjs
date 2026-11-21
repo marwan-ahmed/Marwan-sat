@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { contentHash } from '../cli/lib/install.mjs';
 import { parseFrontmatter } from '../core/bin/lib/yaml.mjs';
 import { SAT_ROOT, makeProject, read, satCli, verify, write } from './helpers.mjs';
 
-const ROLES = ['tech-manager', 'request-interpreter', 'architect', 'security-auditor', 'test-author', 'implementer', 'adversarial-reviewer'];
+const ROLES = ['tech-manager', 'request-interpreter', 'architect', 'security-auditor', 'test-author', 'implementer', 'adversarial-reviewer'].map((r) => `marwan-sat-${r}`);
 
 test('init: generates the seven Antigravity agents, rule, skills, hooks and CI', () => {
   const root = makeProject({ stack: 'nextjs' });
@@ -17,7 +18,7 @@ test('init: generates the seven Antigravity agents, rule, skills, hooks and CI',
     assert.ok(['pro', 'flash', 'inherit'].includes(data.model));
     assert.ok(body.includes('non-negotiables'), 'common rules appended');
     assert.ok(!body.includes('{{'), 'placeholders resolved');
-    if (id === 'tech-manager') {
+    if (id === 'marwan-sat-tech-manager') {
       assert.equal(data.mainAgent, true);
       assert.ok(data.tools.includes('invoke_subagent'));
     } else {
@@ -46,10 +47,10 @@ test('init refuses to run twice', () => {
 
 test('update refuses to overwrite a locally modified managed file, and verify flags it', () => {
   const root = makeProject();
-  write(root, '.team/roles/implementer.md', `${read(root, '.team/roles/implementer.md')}\nlocal edit\n`);
+  write(root, '.team/roles/marwan-sat-implementer.md', `${read(root, '.team/roles/marwan-sat-implementer.md')}\nlocal edit\n`);
   const r = satCli(root, 'update');
   assert.notEqual(r.code, 0);
-  assert.match(r.out, /\.team\/roles\/implementer\.md/);
+  assert.match(r.out, /\.team\/roles\/marwan-sat-implementer\.md/);
   const v = verify(root);
   assert.notEqual(v.code, 0);
   assert.match(v.out, /managed_files/);
@@ -107,4 +108,40 @@ test('cli: commit hints name SAT files only, and doctor separates uncommitted SA
   assert.match(dirty.out, /! SAT files are committed — 1 uncommitted: git add \.team \.agents/);
   assert.match(dirty.out, /! no uncommitted project changes — 1 files \(e\.g\. src\/feature\.mjs\)/);
   assert.doesNotMatch(dirty.out, /git add -A/);
+});
+
+test('update from 0.1.x removes the old unprefixed agent and role files (agents renamed to marwan-sat-*)', () => {
+  const root = makeProject();
+  const lock = JSON.parse(read(root, '.team/sat.lock'));
+  const old = ['tech-manager', 'architect', 'implementer'];
+  for (const r of old) {
+    const agent = `.agents/agents/${r}.md`;
+    const role = `.team/roles/${r}.md`;
+    write(root, agent, `---\nname: ${r}\n---\nold\n`);
+    write(root, role, `---\nid: ${r}\n---\nold\n`);
+    lock.generated[agent] = contentHash(read(root, agent));
+    lock.managed[role] = contentHash(read(root, role));
+  }
+  lock.sat_version = '0.1.3';
+  write(root, '.team/sat.lock', `${JSON.stringify(lock, null, 2)}\n`);
+  const r = satCli(root, 'update');
+  assert.equal(r.code, 0, r.out);
+  for (const o of old) {
+    assert.ok(!existsSync(join(root, `.agents/agents/${o}.md`)), `old agent ${o} removed`);
+    assert.ok(!existsSync(join(root, `.team/roles/${o}.md`)), `old role ${o} removed`);
+    assert.ok(existsSync(join(root, `.agents/agents/marwan-sat-${o}.md`)), `new agent ${o} present`);
+  }
+  assert.match(r.out, /6 removed/);
+  assert.match(r.out, /- \.agents\/agents\/tech-manager\.md/);
+});
+
+test('the tech manager delegates by the exact agent names it can invoke', () => {
+  const root = makeProject();
+  const tm = read(root, '.agents/agents/marwan-sat-tech-manager.md');
+  for (const r of ROLES.filter((x) => x !== 'marwan-sat-tech-manager')) {
+    assert.ok(existsSync(join(root, `.agents/agents/${r}.md`)), `${r} exists`);
+    assert.ok(tm.includes(`\`${r}\``), `tech manager names ${r}`);
+  }
+  assert.ok(!/`(request-interpreter|architect|security-auditor|test-author|implementer|adversarial-reviewer)`/.test(tm), 'no unprefixed agent names left');
+  assert.match(read(root, '.agents/rules/marwan-sat.md'), /`marwan-sat-tech-manager`/);
 });

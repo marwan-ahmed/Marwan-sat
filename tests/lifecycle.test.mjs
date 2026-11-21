@@ -160,7 +160,7 @@ test('guard: phase-based write control and command rules', () => {
   assert.equal(guard(root, 'replace_file_content', { TargetFile: abs('tests/late.test.mjs') }).decision, 'deny');
   assert.equal(guard(root, 'write_to_file', { TargetFile: abs(`${T}/task.json`) }).decision, 'deny');
   assert.equal(guard(root, 'write_to_file', { TargetFile: abs('.team/bin/phase.mjs') }).decision, 'deny');
-  assert.equal(guard(root, 'write_to_file', { TargetFile: abs('.agents/agents/implementer.md') }).decision, 'deny');
+  assert.equal(guard(root, 'write_to_file', { TargetFile: abs('.agents/agents/marwan-sat-implementer.md') }).decision, 'deny');
   assert.equal(guard(root, 'write_to_file', {}).decision, 'ask');
   assert.equal(guard(root, 'run_command', { CommandLine: 'rm -rf src' }).decision, 'deny');
   assert.equal(guard(root, 'run_command', { CommandLine: 'git push --force origin sat/TASK-001' }).decision, 'deny');

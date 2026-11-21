@@ -2,7 +2,7 @@
 
 **A governed seven-agent software team with deterministic gates, installable in any project.**
 
-> Version `0.1.3` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
+> Version `0.2.0` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
 
 Marwan SAT is not "a smarter agent". It is **governance around agents**: who writes what, when, with what evidence, and who decides.
 
@@ -14,13 +14,13 @@ Marwan SAT is not "a smarter agent". It is **governance around agents**: who wri
 
 | # | Role | Does | Never |
 |---|---|---|---|
-| 1 | `tech-manager` | Receives requests, runs the phase machine, delegates, escalates, delivers the report | Code, technical decisions, overriding a veto |
-| 2 | `request-interpreter` | Turns the request into a single-interpretation executive prompt (rules, worked examples, ≤ 3 blocking questions) | Design |
-| 3 | `architect` | Testable SPEC (AC-n), ARCH, PLAN with narrow `allowed_write` per task | Code or tests |
-| 4 | `security-auditor` | Threat model with abuse cases; later attacks the running app on localhost with synthetic data | Editing code, non-local targets |
-| 5 | `test-author` | Writes tests **before** the code, from acceptance criteria and abuse cases | Source code |
-| 6 | `implementer` | The only code writer, inside its task's `allowed_write` | Touching frozen tests or specs |
-| 7 | `adversarial-reviewer` | Logic, money and test-tampering review with a clean context | Reading the implementer's notes |
+| 1 | `marwan-sat-tech-manager` | Receives requests, runs the phase machine, delegates, escalates, delivers the report | Code, technical decisions, overriding a veto |
+| 2 | `marwan-sat-request-interpreter` | Turns the request into a single-interpretation executive prompt (rules, worked examples, ≤ 3 blocking questions) | Design |
+| 3 | `marwan-sat-architect` | Testable SPEC (AC-n), ARCH, PLAN with narrow `allowed_write` per task | Code or tests |
+| 4 | `marwan-sat-security-auditor` | Threat model with abuse cases; later attacks the running app on localhost with synthetic data | Editing code, non-local targets |
+| 5 | `marwan-sat-test-author` | Writes tests **before** the code, from acceptance criteria and abuse cases | Source code |
+| 6 | `marwan-sat-implementer` | The only code writer, inside its task's `allowed_write` | Touching frozen tests or specs |
+| 7 | `marwan-sat-adversarial-reviewer` | Logic, money and test-tampering review with a clean context | Reading the implementer's notes |
 
 Deterministic tools (Node.js only, zero dependencies): `phase` (state machine, task branch, test freeze commit), `verify` (build/tests/scanners + integrity checks, raw evidence), `report` (evidence-built, hash-locked report), `guard` (Antigravity `PreToolUse` hook enforcing per-phase write rules).
 
@@ -46,13 +46,15 @@ SAT is installed into each project separately (a git repo with at least one comm
 
 ```bash
 cd /path/to/your-project
-npx github:marwan-ahmed/marwan-sat#v0.1.3 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
-npx github:marwan-ahmed/marwan-sat#v0.1.3 doctor
+npx github:marwan-ahmed/marwan-sat#v0.2.0 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
+npx github:marwan-ahmed/marwan-sat#v0.2.0 doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.1.3"
+git commit -m "chore: install Marwan SAT 0.2.0"
 ```
 
-`#v0.1.3` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
+`#v0.2.0` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
+
+**Upgrading from 0.1.x to 0.2.0:** agent names now start with `marwan-sat-` (for example `marwan-sat-tech-manager`). Finish any active task first, then run `update`: it removes the old agent files. Then pick `marwan-sat-tech-manager` again in Antigravity.
 
 **Option 2 — clone once, then use `sat` everywhere:**
 
@@ -73,7 +75,7 @@ On Windows PowerShell, if you see `running scripts is disabled on this system`, 
 There is no terminal command to start a task: the tech manager opens it, records your request verbatim and creates the `sat/TASK-<n>` branch.
 
 1. Open the project folder in the Google Antigravity **app** (not the IDE), without a worktree.
-2. Pick `tech-manager` from the **Main Agent** dropdown above the message box.
+2. Open the **model button** under the message box (it shows the model name, e.g. `Gemini … ⌄`) and pick `marwan-sat-tech-manager` from its agent picker; it then shows as a chip next to the model name. In Antigravity versions before 2.29 the picker was a separate **Main Agent** dropdown above the message box.
 3. Send the start command:
 
 ```text
