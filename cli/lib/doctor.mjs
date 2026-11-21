@@ -67,21 +67,25 @@ export function doctor({ root, satRoot, run = true }) {
     hookOk = false;
   }
   add(hookOk ? 'ok' : 'fail', 'guard is registered in .agents/hooks.json');
-  // Live self-test: run the guard exactly as Antigravity does (JSON on stdin) and expect it to block a protected file.
-  const probe = spawnSync(process.execPath, [join(root, '.team', 'bin', 'guard.mjs')], {
-    cwd: root,
-    encoding: 'utf8',
-    timeout: 10000,
-    input: JSON.stringify({ toolCall: { name: 'write_to_file', args: { TargetFile: join(root, '.team', 'CHARTER.md') } }, workspacePaths: [root] }),
-  });
-  let probeDecision = null;
-  try {
-    probeDecision = JSON.parse(probe.stdout).decision;
-  } catch {
-    probeDecision = null;
+  // Live self-test: run the hook command exactly as Antigravity does (`node .team/bin/guard.mjs`, JSON on stdin),
+  // from the project root and from .agents/ (where Antigravity actually runs workspace hooks), and expect both
+  // to block a protected file. No workspacePaths in the payload: the guard must find the root by itself.
+  const probeIn = JSON.stringify({ toolCall: { name: 'write_to_file', args: { TargetFile: join(root, '.team', 'CHARTER.md') } } });
+  const probeFails = [];
+  for (const [where, cwd] of [['project root', root], ['.agents/', join(root, '.agents')]]) {
+    const probe = spawnSync(process.execPath, [join('.team', 'bin', 'guard.mjs')], { cwd, encoding: 'utf8', timeout: 10000, input: probeIn });
+    let decision = null;
+    try {
+      decision = JSON.parse(probe.stdout).decision;
+    } catch {
+      decision = null;
+    }
+    if (decision !== 'deny') {
+      const err = (probe.stderr || (probe.error && probe.error.message) || 'no output').trim().split('\n').slice(-2).join(' | ');
+      probeFails.push(`from ${where}: ${decision || err}`);
+    }
   }
-  const probeErr = (probe.stderr || (probe.error && probe.error.message) || 'no output').trim().split('\n').slice(-3).join(' | ');
-  add(probeDecision === 'deny' ? 'ok' : 'fail', 'guard works on this machine (live test: it blocks editing a protected file)', probeDecision === 'deny' ? '' : `result: ${probeDecision || probeErr}`);
+  add(probeFails.length ? 'fail' : 'ok', 'guard works on this machine (live test from the root and from .agents/: it blocks a protected file)', probeFails.length ? `${probeFails.join('; ')} — run: ${satCommand(satRoot, satVersion(satRoot))} update` : '');
   if (existsSync(agentsDir)) {
     const known = JSON.parse(readFileSync(join(satRoot, 'adapters', 'antigravity', 'tools.json'), 'utf8'));
     const knownNames = new Set(Object.values(known.capabilities).flat());

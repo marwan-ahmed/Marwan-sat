@@ -2,7 +2,7 @@
 
 **A governed seven-agent software team with deterministic gates, installable in any project.**
 
-> Version `0.1.2` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
+> Version `0.1.3` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
 
 Marwan SAT is not "a smarter agent". It is **governance around agents**: who writes what, when, with what evidence, and who decides.
 
@@ -46,13 +46,13 @@ SAT is installed into each project separately (a git repo with at least one comm
 
 ```bash
 cd /path/to/your-project
-npx github:marwan-ahmed/marwan-sat#v0.1.2 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
-npx github:marwan-ahmed/marwan-sat#v0.1.2 doctor
+npx github:marwan-ahmed/marwan-sat#v0.1.3 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
+npx github:marwan-ahmed/marwan-sat#v0.1.3 doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.1.2"
+git commit -m "chore: install Marwan SAT 0.1.3"
 ```
 
-`#v0.1.2` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
+`#v0.1.3` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
 
 **Option 2 — clone once, then use `sat` everywhere:**
 

@@ -76,7 +76,7 @@ test('presets render for every stack', () => {
     assert.match(yaml, new RegExp(`stack: ${stack}`));
     const d = satCli(root, 'doctor', '--quick');
     assert.match(d.out, /Verdict:/);
-    assert.match(d.out, /✓ guard works on this machine/, 'live guard self-test passes');
+    assert.match(d.out, /✓ guard works on this machine \(live test from the root and from \.agents\//, 'live guard self-test passes');
   }
 });
 

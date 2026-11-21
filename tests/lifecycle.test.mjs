@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { execPrompt, git, guard, implementCorrectly, makeProject, phase, read, report, T, task, toImplement, verify, write } from './helpers.mjs';
+import { execPrompt, git, guard, implementCorrectly, makeProject, phase, read, report, sh, T, task, toImplement, verify, write } from './helpers.mjs';
 
 test('full path: from request to closed, with a fix cycle', () => {
   const root = makeProject();
@@ -202,4 +202,18 @@ test('verify: a configured scanner that is not installed is a warning locally an
   const ci = verify(root, '--ci');
   assert.notEqual(ci.code, 0);
   assert.match(ci.out, /secrets: fail/);
+});
+
+test('guard: works the way Antigravity runs it — `node .team/bin/guard.mjs` from .agents/, no workspacePaths', () => {
+  // Regression: Antigravity runs workspace hooks with .agents/ as the working directory, and the hook failed
+  // with "Cannot find module .agents/.team/bin/guard.mjs", which blocked every tool call.
+  const root = makeProject();
+  const payload = (file) => JSON.stringify({ toolCall: { name: 'write_to_file', args: { TargetFile: join(root, file) } } });
+  for (const cwd of [root, join(root, '.agents')]) {
+    const protectedFile = sh('node', [join('.team', 'bin', 'guard.mjs')], cwd, payload('.team/CHARTER.md'));
+    assert.equal(protectedFile.code, 0, protectedFile.out);
+    assert.equal(JSON.parse(protectedFile.stdout).decision, 'deny', `from ${cwd}: ${protectedFile.out}`);
+    const noTask = sh('node', [join('.team', 'bin', 'guard.mjs')], cwd, payload('src/a.mjs'));
+    assert.equal(JSON.parse(noTask.stdout).decision, 'ask', `from ${cwd}: ${noTask.out}`);
+  }
 });

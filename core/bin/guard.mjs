@@ -15,7 +15,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadProject } from './lib/config.mjs';
+import { findRoot, loadProject } from './lib/config.mjs';
 import { matchAny, toPosix } from './lib/glob.mjs';
 import { phaseWritable, protectedGlobs, readTasksJson } from './lib/scope.mjs';
 import { readJSON, statePath, taskDir } from './lib/state.mjs';
@@ -62,7 +62,8 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
   const call = payload && payload.toolCall ? payload.toolCall : {};
   const tool = String(call.name || '');
   const args = call.args || {};
-  const root = resolve((payload.workspacePaths && payload.workspacePaths[0]) || cwd);
+  // Antigravity runs workspace hooks from inside .agents/, so without workspacePaths walk up to the project root.
+  const root = resolve((payload.workspacePaths && payload.workspacePaths[0]) || findRoot(cwd) || cwd);
   if (!existsSync(join(root, '.team', 'project.yaml'))) return { decision: 'allow' };
 
   let cfg;
@@ -122,8 +123,9 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
   };
 }
 
-const isMain = Boolean(process.argv[1]) && resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
-if (isMain) {
+// The hook entry point: read the payload on stdin, print one decision. Called directly, or by the
+// forwarding shim at .agents/.team/bin/guard.mjs (see adapters/antigravity/generate.mjs).
+export function runHook() {
   let payload = {};
   try {
     const raw = readStdin();
@@ -138,3 +140,6 @@ if (isMain) {
     out('ask', `Internal guard error: ${e.message}`);
   }
 }
+
+const isMain = Boolean(process.argv[1]) && resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
+if (isMain) runHook();

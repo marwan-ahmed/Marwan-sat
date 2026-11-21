@@ -113,7 +113,7 @@ git pull
 من داخل مجلد المشروع:
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.1.2 init --stack nextjs
+npx github:marwan-ahmed/marwan-sat#v0.1.3 init --stack nextjs
 ```
 
 اختر قيمة `--stack` حسب مشروعك:
@@ -131,7 +131,7 @@ npx github:marwan-ahmed/marwan-sat#v0.1.2 init --stack nextjs
 **افحص الجاهزية:**
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.1.2 doctor
+npx github:marwan-ahmed/marwan-sat#v0.1.3 doctor
 ```
 
 **كيف تقرأ النتيجة:** رسائل الطرفية بالإنجليزية، لأن طرفيات Windows لا تعرض العربية من اليمين إلى اليسار، فتظهر حروفها مقطّعة ومعكوسة.
@@ -147,7 +147,7 @@ npx github:marwan-ahmed/marwan-sat#v0.1.2 doctor
 
 ```bash
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.1.2"
+git commit -m "chore: install Marwan SAT 0.1.3"
 ```
 
 > **لا تستخدم `git add -A` هنا.** هذا الأمر يضيف كل تغيير غير محفوظ في مشروعك، فيختلط عملك بملفات SAT في commit واحد. إن كانت عندك تغييرات خاصة بمشروعك، فاحفظها في commit مستقل برسالة تصفها. يساعدك `doctor` هنا: يحذّرك إن وُجدت تغييرات غير محفوظة خارج ملفات SAT.
@@ -204,7 +204,7 @@ git commit -m "chore: install Marwan SAT 0.1.2"
 2. حدّث Antigravity إلى آخر إصدار، ثم أعد تشغيله.
 3. شغّل `doctor` مجدداً. إن قال إن ملفات الوكلاء معدّلة، فأعد توليدها:
    ```bash
-   npx github:marwan-ahmed/marwan-sat#v0.1.2 regenerate --force
+   npx github:marwan-ahmed/marwan-sat#v0.1.3 regenerate --force
    ```
 
 ---
@@ -272,7 +272,7 @@ SAT يرفض بدء مهمة جديدة وأنت ما زلت على فرع مه�
 | الأمر | متى |
 |---|---|
 | `node .team/bin/phase.mjs status` | لتعرف أين وصلت المهمة الحالية |
-| `npx github:marwan-ahmed/marwan-sat#v0.1.2 doctor` | عند أي شك في التثبيت |
+| `npx github:marwan-ahmed/marwan-sat#v0.1.3 doctor` | عند أي شك في التثبيت |
 | `node .team/bin/phase.mjs cancel --note "السبب"` | لإلغاء المهمة الحالية نهائياً |
 | `git checkout main` ثم `git pull` | بعد كل دمج، وقبل كل مهمة جديدة |
 
@@ -284,6 +284,7 @@ SAT يرفض بدء مهمة جديدة وأنت ما زلت على فرع مه�
 |---|---|---|
 | `running scripts is disabled on this system` | سياسة PowerShell الافتراضية تمنع السكربتات | استخدم `npx.cmd`، أو شغّل مرة واحدة: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | `tech-manager` لا يظهر | مجلد خاطئ، أو إصدار قديم من Antigravity | راجع الخطوتين 4 و6 |
+| كل الأدوات تفشل وتظهر `JSON hook "…marwan-sat-guard…" failed` | الحارس لا يعمل، وAntigravity يمنع أي أداة حين يفشل الـhook | حدّث SAT إلى 0.1.3 أو أحدث بأمر `update`، ثم ابدأ محادثة جديدة. وللطوارئ فقط: عطّل الـhook مؤقتاً من **Settings ← Customizations ← Hooks** |
 | `The working tree is not clean` | تغييرات غير محفوظة في git | راجعها بـ`git status`، ثم احفظها في commit مستقل يصفها، أو أجّلها بـ`git stash` |
 | `You are on a previous task's branch` | لم ترجع إلى الفرع الرئيسي بعد الدمج | `git checkout main` ثم `git pull` |
 | `Task TASK-… is still active` | مهمة سابقة لم تُغلق | أكملها، أو ألغِها بأمر `cancel` |
