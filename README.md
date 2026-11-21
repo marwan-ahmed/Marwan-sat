@@ -2,7 +2,7 @@
 
 **فريق برمجي من سبعة وكلاء ذكاء اصطناعي، بضوابط حتمية، يُثبَّت في أي مشروع.**
 
-> الإصدار `0.1.1` — **تجريبي**. لم يمر بعد بالتجربة الأولى على مشروع حقيقي (الميثاق §17).
+> الإصدار `0.1.2` — **تجريبي**. لم يمر بعد بالتجربة الأولى على مشروع حقيقي (الميثاق §17).
 > [English summary](README.en.md) · الترخيص: [MIT](#الترخيص) © 2026 مروان أحمد
 >
 > **جديد على Antigravity أو على git؟** ابدأ من [دليل المبتدئين: تشغيل SAT في Antigravity خطوة بخطوة](docs/ANTIGRAVITY_GUIDE.md).
@@ -97,13 +97,15 @@ Marwan SAT ليس «وكيلاً أذكى». هو **نظام حوكمة** حول
 لا تحتاج إلى استنساخ SAT. من داخل مجلد مشروعك:
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.1.1 init --stack nextjs
-npx github:marwan-ahmed/marwan-sat#v0.1.1 doctor
-git add -A && git commit -m "chore: install Marwan SAT 0.1.1"
+npx github:marwan-ahmed/marwan-sat#v0.1.2 init --stack nextjs
+npx github:marwan-ahmed/marwan-sat#v0.1.2 doctor
+git add .team .agents .github/workflows/sat-verify.yml .gitignore
+git commit -m "chore: install Marwan SAT 0.1.2"
 ```
 
 - `--stack`: `nextjs` أو `laravel` أو `flutter` أو `react-native` أو `custom`. إن حذفته يحاول `init` اكتشافه من ملفات المشروع.
-- `#v0.1.1` يثبّت الإصدار. بدونه تحصل على آخر نسخة في الفرع الرئيسي، وقد تتغير بين مشروع وآخر.
+- `#v0.1.2` يثبّت الإصدار. بدونه تحصل على آخر نسخة في الفرع الرئيسي، وقد تتغير بين مشروع وآخر.
+- **لماذا هذه المسارات تحديداً لا `git add -A`؟** لأن `-A` يضيف كل تغيير غير محفوظ في مشروعك، فيختلط عملك بملفات SAT في commit واحد برسالة لا تصفه.
 - **التحديث لاحقاً:** الأمر نفسه مع الوسم الأحدث وكلمة `update`، مثل `npx github:marwan-ahmed/marwan-sat#v0.2.0 update`.
 
 ### الطريقة 2 — استنساخ مرة واحدة، ثم الأمر `sat` في كل مشاريعك
@@ -120,7 +122,8 @@ npm link                          # يجعل الأمر sat متاحاً في أ
 cd /path/to/your-project
 sat init --stack nextjs
 sat doctor
-git add -A && git commit -m "chore: install Marwan SAT 0.1.1"
+git add .team .agents .github/workflows/sat-verify.yml .gitignore
+git commit -m "chore: install Marwan SAT 0.1.2"
 ```
 
 - **التحديث:** `git pull` داخل مجلد `marwan-sat`، ثم `sat update` داخل المشروع.

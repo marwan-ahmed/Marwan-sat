@@ -4,11 +4,11 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseFrontmatter } from '../../core/bin/lib/yaml.mjs';
 import { COMMAND_ORDER, loadProject } from '../../core/bin/lib/config.mjs';
-import { headSha, isGitRepo, remoteUrl } from '../../core/bin/lib/git.mjs';
+import { headSha, isGitRepo, porcelainFiles, remoteUrl } from '../../core/bin/lib/git.mjs';
 import { commandExists, firstToken, runShell } from '../../core/bin/lib/proc.mjs';
 import { readLock } from '../../core/bin/lib/scope.mjs';
 import { HOOK_KEY } from '../../adapters/antigravity/generate.mjs';
-import { locallyModified, satVersion } from './install.mjs';
+import { SAT_PATHS, locallyModified, satVersion } from './install.mjs';
 import { satCommand } from './invoke.mjs';
 
 const ROLE_IDS = ['tech-manager', 'request-interpreter', 'architect', 'security-auditor', 'test-author', 'implementer', 'adversarial-reviewer'];
@@ -26,6 +26,14 @@ export function doctor({ root, satRoot, run = true }) {
     add(headSha(root) ? 'ok' : 'fail', 'git: initial commit', headSha(root) ? '' : 'there are no commits yet');
     const url = remoteUrl(root);
     add(url && /github\.com/i.test(url) ? 'ok' : 'warn', 'GitHub remote', url || 'no remote named origin');
+    // Uncommitted work: SAT's own files vs the owner's. Mixing them in one commit hides the project's changes.
+    const runtime = /^\.team\/(STATE\.json|LEDGER\.jsonl|evidence\/|tasks\/)/;
+    const dirty = porcelainFiles(root).filter((f) => !runtime.test(f));
+    const isSat = (f) => SAT_PATHS.some((p) => f === p || f.startsWith(`${p}/`));
+    const satDirty = dirty.filter(isSat);
+    const ownDirty = dirty.filter((f) => !isSat(f));
+    add(satDirty.length ? 'warn' : 'ok', 'SAT files are committed', satDirty.length ? `${satDirty.length} uncommitted: git add ${SAT_PATHS.join(' ')}` : '');
+    add(ownDirty.length ? 'warn' : 'ok', 'no uncommitted project changes', ownDirty.length ? `${ownDirty.length} files (e.g. ${ownDirty.slice(0, 3).join(', ')}): commit them in their own commit, not with SAT. A task cannot start on a dirty tree.` : '');
   }
 
   const lock = readLock(root);

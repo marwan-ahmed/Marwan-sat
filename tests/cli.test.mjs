@@ -95,3 +95,16 @@ test('cli: "run this next" hints use the command the owner actually has (npx, sa
   assert.notEqual(again.code, 0);
   assert.ok(again.out.includes(`Use: ${satCommand(SAT_ROOT, version)} update`), again.out);
 });
+
+test('cli: commit hints name SAT files only, and doctor separates uncommitted SAT files from the owner\'s work', () => {
+  const root = makeProject();
+  const clean = satCli(root, 'doctor', '--quick');
+  assert.match(clean.out, /✓ SAT files are committed/);
+  assert.match(clean.out, /✓ no uncommitted project changes/);
+  write(root, 'src/feature.mjs', 'export const f = 1;\n');
+  write(root, '.agents/rules/extra-note.md', 'x\n');
+  const dirty = satCli(root, 'doctor', '--quick');
+  assert.match(dirty.out, /! SAT files are committed — 1 uncommitted: git add \.team \.agents/);
+  assert.match(dirty.out, /! no uncommitted project changes — 1 files \(e\.g\. src\/feature\.mjs\)/);
+  assert.doesNotMatch(dirty.out, /git add -A/);
+});

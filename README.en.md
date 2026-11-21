@@ -2,7 +2,7 @@
 
 **A governed seven-agent software team with deterministic gates, installable in any project.**
 
-> Version `0.1.1` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
+> Version `0.1.2` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
 
 Marwan SAT is not "a smarter agent". It is **governance around agents**: who writes what, when, with what evidence, and who decides.
 
@@ -46,18 +46,20 @@ SAT is installed into each project separately (a git repo with at least one comm
 
 ```bash
 cd /path/to/your-project
-npx github:marwan-ahmed/marwan-sat#v0.1.1 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
-npx github:marwan-ahmed/marwan-sat#v0.1.1 doctor
-git add -A && git commit -m "chore: install Marwan SAT 0.1.1"
+npx github:marwan-ahmed/marwan-sat#v0.1.2 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
+npx github:marwan-ahmed/marwan-sat#v0.1.2 doctor
+git add .team .agents .github/workflows/sat-verify.yml .gitignore
+git commit -m "chore: install Marwan SAT 0.1.2"
 ```
 
-`#v0.1.1` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
+`#v0.1.2` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
 
 **Option 2 — clone once, then use `sat` everywhere:**
 
 ```bash
 git clone https://github.com/marwan-ahmed/marwan-sat.git
-cd marwan-sat && npm link
+cd marwan-sat
+npm link
 cd /path/to/your-project
 sat init --stack nextjs
 sat doctor
@@ -80,7 +82,7 @@ New task: <describe what you need, as you would to a human tech lead>
 
 Requirements: a clean working tree and no other active task (one task at a time). The tech manager comes back to you only at Gate 0 (≤ 3 blocking questions, if any), Gate 1 (design approval, before any code) and Gate 2 (report and PR; you merge). Check progress any time with `node .team/bin/phase.mjs status`.
 
-After each merge, run `git checkout main && git pull` before the next task. A step-by-step beginner guide (Arabic) is in [docs/ANTIGRAVITY_GUIDE.md](docs/ANTIGRAVITY_GUIDE.md).
+After each merge, run `git checkout main` then `git pull` before the next task. A step-by-step beginner guide (Arabic) is in [docs/ANTIGRAVITY_GUIDE.md](docs/ANTIGRAVITY_GUIDE.md).
 
 ## Honest limits
 

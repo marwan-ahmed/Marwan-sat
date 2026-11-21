@@ -25,6 +25,10 @@ const norm = (text) => text.replace(/\r\n/g, '\n');
 export const contentHash = (text) => sha256(norm(text));
 
 // Files SAT owns inside the host project. They are replaced on update.
+// What SAT writes into a host project. Hints say "git add <these>", never "git add -A", so the owner's own
+// uncommitted work is never swept into a SAT commit.
+export const SAT_PATHS = ['.team', '.agents', '.github/workflows/sat-verify.yml', '.gitignore'];
+
 export function managedFiles(satRoot, stack) {
   const files = {};
   files['.team/CHARTER.md'] = readFileSync(join(satRoot, 'charter', 'CHARTER.md'), 'utf8');

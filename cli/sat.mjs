@@ -17,6 +17,7 @@ import {
   managedFiles,
   removeStale,
   renderPreset,
+  SAT_PATHS,
   satVersion,
   trackedHash,
   writeFiles,
@@ -115,8 +116,11 @@ function cmdInit(root, opts) {
   console.log('[SAT] Next steps:');
   console.log('  1) Review .team/project.yaml (commands, paths, security profile, attack environment).');
   console.log(`  2) Run: ${SAT} doctor`);
-  console.log('  3) Commit the SAT files, and turn on branch protection for the main branch on GitHub.');
-  console.log('  4) Start in the Antigravity app: pick the tech-manager agent and send "New task: <your request>" (Arabic works too).');
+  console.log('  3) Commit only the SAT files (keep your own changes in a separate commit):');
+  console.log(`       git add ${SAT_PATHS.join(' ')}`);
+  console.log(`       git commit -m "chore: install Marwan SAT ${version}"`);
+  console.log('  4) Turn on branch protection for the main branch on GitHub.');
+  console.log('  5) Start in the Antigravity app: pick the tech-manager agent and send "New task: <your request>" (Arabic works too).');
   if (!existsSync(join(root, 'AGENTS.md'))) console.log('  ! No AGENTS.md: consider adding one for project-specific rules (for example from the arabic-agents template).');
 }
 
@@ -142,6 +146,9 @@ function cmdUpdate(root, opts) {
   for (const r of changed) console.log(`  ~ ${r}`);
   for (const r of removed) console.log(`  - ${r}`);
   console.log(`[SAT] project.yaml, DECISIONS.md and the tasks were not touched. Run: ${SAT} doctor`);
+  console.log('[SAT] Then commit only the SAT files:');
+  console.log(`       git add ${SAT_PATHS.join(' ')}`);
+  console.log(`       git commit -m "chore: update Marwan SAT to ${version}"`);
 }
 
 function cmdRegenerate(root, opts) {
