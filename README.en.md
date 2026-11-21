@@ -2,7 +2,7 @@
 
 **A governed seven-agent software team with deterministic gates, installable in any project.**
 
-> Version `0.1.0` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
+> Version `0.1.1` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
 
 Marwan SAT is not "a smarter agent". It is **governance around agents**: who writes what, when, with what evidence, and who decides.
 
@@ -26,7 +26,7 @@ Deterministic tools (Node.js only, zero dependencies): `phase` (state machine, t
 
 ## Platform support
 
-| Platform | Status in 0.1.0 | What works there |
+| Platform | Status in 0.1.x | What works there |
 |---|---|---|
 | **Google Antigravity app** | **Supported** | The seven agents, the guard, the tools and CI |
 | Antigravity CLI | Reads the same files per its docs; untested | Expected: all of the above |
@@ -46,12 +46,12 @@ SAT is installed into each project separately (a git repo with at least one comm
 
 ```bash
 cd /path/to/your-project
-npx github:marwan-ahmed/marwan-sat#v0.1.0 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
-npx github:marwan-ahmed/marwan-sat#v0.1.0 doctor
-git add -A && git commit -m "chore: install Marwan SAT 0.1.0"
+npx github:marwan-ahmed/marwan-sat#v0.1.1 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
+npx github:marwan-ahmed/marwan-sat#v0.1.1 doctor
+git add -A && git commit -m "chore: install Marwan SAT 0.1.1"
 ```
 
-`#v0.1.0` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
+`#v0.1.1` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
 
 **Option 2 — clone once, then use `sat` everywhere:**
 

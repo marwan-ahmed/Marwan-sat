@@ -1,6 +1,6 @@
 # Claude Code adapter — planned (charter §15.2)
 
-Not implemented in 0.1.0. `sat init --platform claude-code` is refused with a clear message.
+Not implemented in 0.1.x. `sat init --platform claude-code` is refused with a clear message.
 
 Planned mapping from the neutral roles in `core/roles/`:
 

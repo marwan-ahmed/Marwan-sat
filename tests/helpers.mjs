@@ -9,6 +9,10 @@ export const SAT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const ENV = { ...process.env };
 delete ENV.NODE_TEST_CONTEXT; // nested `node --test` must behave like a top-level run
+// The tools under test simulate a developer's machine. GitHub Actions sets CI=true (and GITHUB_*),
+// which switches verify to CI mode (no task recording, mandatory scanners). Tests that need CI mode pass --ci.
+delete ENV.CI;
+for (const k of Object.keys(ENV)) if (k.startsWith('GITHUB_')) delete ENV[k];
 
 export function sh(cmd, args, cwd, input) {
   const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', input, env: ENV });

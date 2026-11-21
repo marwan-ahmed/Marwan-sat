@@ -9,6 +9,7 @@ import { commandExists, firstToken, runShell } from '../../core/bin/lib/proc.mjs
 import { readLock } from '../../core/bin/lib/scope.mjs';
 import { HOOK_KEY } from '../../adapters/antigravity/generate.mjs';
 import { locallyModified, satVersion } from './install.mjs';
+import { satCommand } from './invoke.mjs';
 
 const ROLE_IDS = ['tech-manager', 'request-interpreter', 'architect', 'security-auditor', 'test-author', 'implementer', 'adversarial-reviewer'];
 
@@ -29,11 +30,11 @@ export function doctor({ root, satRoot, run = true }) {
 
   const lock = readLock(root);
   if (!lock) {
-    add('fail', 'تثبيت SAT', 'sat.lock مفقود: شغّل sat init');
+    add('fail', 'تثبيت SAT', `sat.lock مفقود: شغّل ${satCommand(satRoot, satVersion(satRoot))} init`);
     return results;
   }
   const cliVersion = satVersion(satRoot);
-  add(lock.sat_version === cliVersion ? 'ok' : 'warn', `إصدار SAT في المشروع ${lock.sat_version}`, lock.sat_version === cliVersion ? '' : `أداة sat الحالية ${cliVersion}: شغّل sat update`);
+  add(lock.sat_version === cliVersion ? 'ok' : 'warn', `إصدار SAT في المشروع ${lock.sat_version}`, lock.sat_version === cliVersion ? '' : `أداة sat الحالية ${cliVersion}: شغّل ${satCommand(satRoot, cliVersion)} update`);
 
   let cfg;
   try {

@@ -113,7 +113,7 @@ git pull
 من داخل مجلد المشروع:
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.1.0 init --stack nextjs
+npx github:marwan-ahmed/marwan-sat#v0.1.1 init --stack nextjs
 ```
 
 اختر قيمة `--stack` حسب مشروعك:
@@ -131,7 +131,7 @@ npx github:marwan-ahmed/marwan-sat#v0.1.0 init --stack nextjs
 **افحص الجاهزية:**
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.1.0 doctor
+npx github:marwan-ahmed/marwan-sat#v0.1.1 doctor
 ```
 
 **كيف تقرأ النتيجة:**
@@ -145,7 +145,7 @@ npx github:marwan-ahmed/marwan-sat#v0.1.0 doctor
 
 ```bash
 git add -A
-git commit -m "chore: install Marwan SAT 0.1.0"
+git commit -m "chore: install Marwan SAT 0.1.1"
 ```
 
 **بدون أوامر:** افتح أيقونة **Source Control** في المحرر، واكتب الرسالة في المربع أعلاها، ثم اضغط **Commit**.
@@ -200,7 +200,7 @@ git commit -m "chore: install Marwan SAT 0.1.0"
 2. حدّث Antigravity إلى آخر إصدار، ثم أعد تشغيله.
 3. شغّل `doctor` مجدداً. إن قال إن ملفات الوكلاء معدّلة، فأعد توليدها:
    ```bash
-   npx github:marwan-ahmed/marwan-sat#v0.1.0 regenerate --force
+   npx github:marwan-ahmed/marwan-sat#v0.1.1 regenerate --force
    ```
 
 ---
@@ -268,7 +268,7 @@ SAT يرفض بدء مهمة جديدة وأنت ما زلت على فرع مه�
 | الأمر | متى |
 |---|---|
 | `node .team/bin/phase.mjs status` | لتعرف أين وصلت المهمة الحالية |
-| `npx github:marwan-ahmed/marwan-sat#v0.1.0 doctor` | عند أي شك في التثبيت |
+| `npx github:marwan-ahmed/marwan-sat#v0.1.1 doctor` | عند أي شك في التثبيت |
 | `node .team/bin/phase.mjs cancel --note "السبب"` | لإلغاء المهمة الحالية نهائياً |
 | `git checkout main` ثم `git pull` | بعد كل دمج، وقبل كل مهمة جديدة |
 

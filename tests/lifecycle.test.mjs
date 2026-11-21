@@ -190,3 +190,16 @@ test('guard: reviewers keep a clean context and attack localhost only', () => {
   assert.equal(guard(root, 'write_to_file', { TargetFile: join(root, `${T}/REVIEW.json`) }).decision, 'allow');
   assert.equal(guard(root, 'write_to_file', { TargetFile: join(root, 'src/late.mjs') }).decision, 'deny');
 });
+
+test('verify: a configured scanner that is not installed is a warning locally and a failure in CI', () => {
+  const root = makeProject();
+  write(root, '.team/project.yaml', read(root, '.team/project.yaml').replace('    secrets: null', '    secrets: sat-missing-scanner-zz --scan'));
+  git(root, 'add', '-A');
+  git(root, 'commit', '-qm', 'configure a scanner that is not installed');
+  const local = verify(root);
+  assert.equal(local.code, 0, local.out);
+  assert.match(local.out, /secrets: missing/);
+  const ci = verify(root, '--ci');
+  assert.notEqual(ci.code, 0);
+  assert.match(ci.out, /secrets: fail/);
+});

@@ -7,6 +7,7 @@ import { loadProject, STACKS } from '../core/bin/lib/config.mjs';
 import { readLock } from '../core/bin/lib/scope.mjs';
 import { detectBaseBranch, detectName, detectPackageManager, detectStack, pmCommands } from './lib/detect.mjs';
 import { doctor } from './lib/doctor.mjs';
+import { satCommand } from './lib/invoke.mjs';
 import {
   buildLock,
   currentTrackedHash,
@@ -23,6 +24,8 @@ import {
 } from './lib/install.mjs';
 
 const SAT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// Printed in every "run this next" hint, so the hint matches how this run was started (npx, npm link or node).
+const SAT = satCommand(SAT_ROOT, satVersion(SAT_ROOT));
 
 const HELP = `Marwan SAT — Marwan Software Agents Team
 
@@ -62,7 +65,7 @@ const fail = (m) => {
 };
 
 function cmdInit(root, opts) {
-  if (existsSync(join(root, '.team', 'project.yaml'))) fail('SAT مثبت في هذا المشروع. استخدم sat update أو sat regenerate.');
+  if (existsSync(join(root, '.team', 'project.yaml'))) fail(`SAT مثبت في هذا المشروع. استخدم: ${SAT} update أو ${SAT} regenerate`);
   const stack = opts.stack || detectStack(root);
   if (!stack) fail(`تعذّر اكتشاف المكدس. حدده: --stack ${STACKS.join('|')}`);
   if (!STACKS.includes(stack)) fail(`مكدس غير مدعوم: ${stack}`);
@@ -111,7 +114,7 @@ function cmdInit(root, opts) {
   console.log(`[SAT]   ${Object.keys(managed).length} ملفاً مُداراً، ${Object.keys(generated).length} ملفاً مولّداً.`);
   console.log('[SAT] الخطوات التالية:');
   console.log('  1) راجع .team/project.yaml (الأوامر، والمسارات، والملف الأمني، وبيئة الهجوم).');
-  console.log('  2) شغّل: sat doctor');
+  console.log(`  2) شغّل: ${SAT} doctor`);
   console.log('  3) اعمل commit لملفات SAT، وفعّل Branch protection على الفرع الرئيسي في GitHub.');
   console.log('  4) ابدأ العمل في Antigravity: اختر الوكيل tech-manager واكتب له: «مهمة جديدة: <طلبك>».');
   if (!existsSync(join(root, 'AGENTS.md'))) console.log('  ! لا يوجد AGENTS.md: يُنصح بإنشائه لقواعد المشروع الخاصة.');
@@ -119,7 +122,7 @@ function cmdInit(root, opts) {
 
 function cmdUpdate(root, opts) {
   const lock = readLock(root);
-  if (!lock) fail('SAT غير مثبت هنا (sat.lock مفقود). استخدم sat init.');
+  if (!lock) fail(`SAT غير مثبت هنا (sat.lock مفقود). استخدم: ${SAT} init`);
   const cfg = loadProject(root);
   const version = satVersion(SAT_ROOT);
   const major = (v) => Number(String(v).split('.')[0]);
@@ -138,7 +141,7 @@ function cmdUpdate(root, opts) {
   console.log(`[SAT] ✓ حُدّث SAT من ${lock.sat_version} إلى ${version}: ${changed.length} ملفاً تغيّر، ${removed.length} حُذف.`);
   for (const r of changed) console.log(`  ~ ${r}`);
   for (const r of removed) console.log(`  - ${r}`);
-  console.log('[SAT] لم يُلمس project.yaml ولا DECISIONS.md ولا المهام. شغّل sat doctor.');
+  console.log(`[SAT] لم يُلمس project.yaml ولا DECISIONS.md ولا المهام. شغّل: ${SAT} doctor`);
 }
 
 function cmdRegenerate(root, opts) {
@@ -161,7 +164,7 @@ function cmdRegenerate(root, opts) {
   next.sat_version = lock.sat_version;
   writeLock(root, next);
   console.log(`[SAT] ✓ أُعيد توليد ${Object.keys(generated).length} ملفاً.`);
-  if (lock.stack !== cfg.project.stack) console.log('[SAT] ! تغيّر المكدس في project.yaml: شغّل sat update لتحديث المسارات الحساسة.');
+  if (lock.stack !== cfg.project.stack) console.log(`[SAT] ! تغيّر المكدس في project.yaml: شغّل ${SAT} update لتحديث المسارات الحساسة.`);
 }
 
 function cmdDoctor(root, opts) {

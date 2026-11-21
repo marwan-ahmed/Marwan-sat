@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { parseFrontmatter } from '../core/bin/lib/yaml.mjs';
-import { makeProject, read, satCli, verify, write } from './helpers.mjs';
+import { SAT_ROOT, makeProject, read, satCli, verify, write } from './helpers.mjs';
 
 const ROLES = ['tech-manager', 'request-interpreter', 'architect', 'security-auditor', 'test-author', 'implementer', 'adversarial-reviewer'];
 
@@ -78,4 +78,20 @@ test('presets render for every stack', () => {
     assert.match(d.out, /الحكم/);
     assert.match(d.out, /✓ guard يعمل على هذا الجهاز/, 'live guard self-test passes');
   }
+});
+
+test('cli: "run this next" hints use the command the owner actually has (npx, sat or node)', async () => {
+  const { satCommand, githubSpec } = await import('../cli/lib/invoke.mjs');
+  assert.equal(githubSpec(SAT_ROOT), 'github:marwan-ahmed/marwan-sat');
+  const npxRoot = '/home/u/.npm/_npx/3f2a/node_modules/marwan-sat';
+  assert.equal(satCommand(npxRoot, '0.1.1', {}, () => true), 'npx github:marwan-ahmed/marwan-sat#v0.1.1');
+  assert.equal(satCommand(SAT_ROOT, '0.1.1', { npm_command: 'exec' }, () => true).startsWith('npx '), true);
+  assert.equal(satCommand(SAT_ROOT, '0.1.1', {}, () => true), 'sat');
+  assert.match(satCommand(SAT_ROOT, '0.1.1', {}, () => false), /^node ".+sat\.mjs"$/);
+  // End to end: the hint printed by the real CLI is exactly the command this machine can run.
+  const version = JSON.parse(readFileSync(join(SAT_ROOT, 'package.json'), 'utf8')).version;
+  const root = makeProject();
+  const again = satCli(root, 'init', '--stack', 'custom');
+  assert.notEqual(again.code, 0);
+  assert.ok(again.out.includes(`استخدم: ${satCommand(SAT_ROOT, version)} update`), again.out);
 });
