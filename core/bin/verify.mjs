@@ -9,9 +9,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { COMMAND_ORDER, findRoot, loadProject } from './lib/config.mjs';
-import { changedSince, headSha, isGitRepo, mergeBase, porcelainFiles } from './lib/git.mjs';
+import { changedSince, effectiveBase, headSha, isGitRepo, mergeBase, porcelainFiles } from './lib/git.mjs';
 import { matchAny, parsePathList, toPosix } from './lib/glob.mjs';
 import { commandExists, firstToken, runShell, sha256File } from './lib/proc.mjs';
+import { judgeDependencies, scopeScannerCommand } from './lib/scan.mjs';
 import { allowedWriteOf, FIXED_PROTECTED, readLock, readTasksJson } from './lib/scope.mjs';
 import { activeTask, appendLedger, readTask, taskDir, taskRel, writeTask } from './lib/state.mjs';
 
@@ -66,6 +67,12 @@ function main() {
 
   const sha = headSha(root);
   const dirtyFiles = porcelainFiles(root).filter((f) => !isToolFile(f));
+
+  // The commit this change is measured from (charter §9.6): in CI the merge base with the PR's base branch;
+  // locally the task's base (or the merge base with the base branch once it was merged into the task branch).
+  const scanScope = cfg.security.scan_scope;
+  const base = ciInfo ? ciInfo.mergeBaseSha : effectiveBase(root, cfg.git.base_branch, task && task.base_sha);
+  const changedFromBase = base ? changedSince(base, root).filter((f) => !isToolFile(f)) : [];
   const runDir = typeof opts.out === 'string' ? join(root, opts.out) : task ? join(taskDir(root, task.id), 'evidence', `${stamp()}-${(sha || 'nosha').slice(0, 7)}`) : join(root, '.team', 'evidence', `${stamp()}-${(sha || 'nosha').slice(0, 7)}`);
   mkdirSync(runDir, { recursive: true });
 
@@ -76,6 +83,8 @@ function main() {
     sha,
     dirty: dirtyFiles.length > 0,
     ci,
+    scan_scope: scanScope,
+    base: base || null,
     started_at: new Date().toISOString(),
     steps: [],
     checks: [],
@@ -89,6 +98,12 @@ function main() {
     if (step.status === 'fail') summary.result = 'fail';
   };
 
+  const writeLog = (name, command, r) => {
+    const log = join(runDir, `${name}.log`);
+    writeFileSync(log, `$ ${command}\n# exit: ${r.exitCode}${r.timedOut ? ' (timeout)' : ''}\n# duration_ms: ${r.durationMs}\n\n--- stdout ---\n${r.stdout}\n--- stderr ---\n${r.stderr}\n`, 'utf8');
+    return toPosix(relative(root, log));
+  };
+
   const runStep = (name, command, kind) => {
     if (skip.has(name)) return record({ name, kind, command, status: 'skipped', reason: '--skip' });
     if (!command) return record({ name, kind, command: null, status: 'not_configured' });
@@ -97,10 +112,30 @@ function main() {
       const required = ci || cfg.security.require_scanners;
       return record({ name, kind, command, status: required ? 'fail' : 'missing', reason: `${bin} is not installed` });
     }
-    const r = runShell(command, { cwd: root, timeoutMs });
-    const log = join(runDir, `${name}.log`);
-    writeFileSync(log, `$ ${command}\n# exit: ${r.exitCode}${r.timedOut ? ' (timeout)' : ''}\n# duration_ms: ${r.durationMs}\n\n--- stdout ---\n${r.stdout}\n--- stderr ---\n${r.stderr}\n`, 'utf8');
-    return record({ name, kind, command, status: r.exitCode === 0 ? 'pass' : 'fail', exit_code: r.exitCode, duration_ms: r.durationMs, log: toPosix(relative(root, log)) });
+    // Scanners look only at the change (charter §9.6), unless scan_scope is "full" or there is no base.
+    const diffScope = kind === 'scanner' && scanScope === 'diff' && Boolean(base);
+    let cmd = command;
+    const scope = diffScope ? { scope: 'diff', base: base.slice(0, 10) } : kind === 'scanner' ? { scope: 'full' } : {};
+    if (diffScope && name !== 'dependencies') {
+      const s = scopeScannerCommand(name, command, base);
+      cmd = s.command;
+      if (!s.scoped) scope.scope = 'full';
+      if (s.needsClean && dirtyFiles.length) {
+        return record({ name, kind, command: cmd, ...scope, status: 'warn', reason: 'not run: a baseline scan needs a clean working tree. Commit, then run verify again (a dirty run is not evidence anyway)' });
+      }
+    }
+    const r = runShell(cmd, { cwd: root, timeoutMs });
+    const log = writeLog(name, cmd, r);
+    const step = { name, kind, command: cmd, ...scope, status: r.exitCode === 0 ? 'pass' : 'fail', exit_code: r.exitCode, duration_ms: r.durationMs, log };
+    if (diffScope && name === 'dependencies' && r.exitCode !== 0) {
+      const j = judgeDependencies({ root, base, command, changed: changedFromBase, primary: r, timeoutMs, logDir: runDir });
+      step.status = j.status;
+      if (j.reason) step.reason = j.reason;
+      if (j.preexisting) step.preexisting = true;
+      if (j.added) step.added = j.added;
+      if (j.logs) step.extra_logs = Object.values(j.logs).map((p) => toPosix(relative(root, p)));
+    }
+    return record(step);
   };
 
   // 1) Project commands.
@@ -111,6 +146,8 @@ function main() {
   runStep('secrets', cfg.security.scanners.secrets, 'scanner');
   runStep('sast', cfg.security.scanners.sast, 'scanner');
   runStep('dependencies', cfg.security.scanners.dependencies, 'scanner');
+  for (const s of summary.steps.filter((x) => x.status === 'warn')) console.log(`[SAT]   ${s.name}: ${s.reason}`);
+  for (const s of summary.steps.filter((x) => x.kind === 'scanner' && x.status === 'fail' && x.reason)) console.log(`[SAT]   ${s.name}: ${s.reason}`);
 
   const check = (name, ok, details) => {
     summary.checks.push({ name, status: ok ? 'pass' : 'fail', details });
@@ -130,8 +167,14 @@ function main() {
   // 4) Task-scoped integrity.
   if (task) {
     const T = taskRel(task.id);
-    const base = task.frozen_sha || task.base_sha;
-    const changed = changedSince(base, root).filter((f) => !isToolFile(f));
+    // What this task changed: since the test freeze (if any), minus whatever came in from the base branch.
+    const taskBase = base || task.base_sha;
+    const sinceBase = base ? changedFromBase : changedSince(taskBase, root).filter((f) => !isToolFile(f));
+    let changed = sinceBase;
+    if (task.frozen_sha) {
+      const sinceFrozen = new Set(changedSince(task.frozen_sha, root));
+      changed = sinceBase.filter((f) => sinceFrozen.has(f));
+    }
     const inScopePhases = ['IMPLEMENT', 'FIX', 'REVIEW', 'REPORT', 'GATE_2', 'CLOSED'];
     if (task.frozen_sha && inScopePhases.includes(task.phase)) {
       const touched = changed.filter((f) => matchAny(f, cfg.paths.tests));

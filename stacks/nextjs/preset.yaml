@@ -33,6 +33,7 @@ security:
   seed: .team/seed/           # بيانات اصطناعية فقط
   constitution: null          # مسار دستور الأمن الخاص بالمشروع إن وُجد
   require_scanners: false     # في CI تُعدّ الماسحات إلزامية دائماً
+  scan_scope: diff            # diff: تحكم الماسحات على تغيير المهمة وحده مقارنةً بالفرع الأساسي، والدين المسبق يُذكر ولا يُفشل · full: فحص المستودع كله
   scanners:
     secrets: gitleaks git --no-banner --redact --exit-code 1
     sast: semgrep scan --config p/default --error --metrics=off --quiet

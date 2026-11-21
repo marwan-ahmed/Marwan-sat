@@ -113,7 +113,7 @@ git pull
 من داخل مجلد المشروع:
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.2.0 init --stack nextjs
+npx github:marwan-ahmed/marwan-sat#v0.3.0 init --stack nextjs
 ```
 
 اختر قيمة `--stack` حسب مشروعك:
@@ -131,7 +131,7 @@ npx github:marwan-ahmed/marwan-sat#v0.2.0 init --stack nextjs
 **افحص الجاهزية:**
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.2.0 doctor
+npx github:marwan-ahmed/marwan-sat#v0.3.0 doctor
 ```
 
 **كيف تقرأ النتيجة:** رسائل الطرفية بالإنجليزية، لأن طرفيات Windows لا تعرض العربية من اليمين إلى اليسار، فتظهر حروفها مقطّعة ومعكوسة.
@@ -147,7 +147,7 @@ npx github:marwan-ahmed/marwan-sat#v0.2.0 doctor
 
 ```bash
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.2.0"
+git commit -m "chore: install Marwan SAT 0.3.0"
 ```
 
 > **لا تستخدم `git add -A` هنا.** هذا الأمر يضيف كل تغيير غير محفوظ في مشروعك، فيختلط عملك بملفات SAT في commit واحد. إن كانت عندك تغييرات خاصة بمشروعك، فاحفظها في commit مستقل برسالة تصفها. يساعدك `doctor` هنا: يحذّرك إن وُجدت تغييرات غير محفوظة خارج ملفات SAT.
@@ -206,7 +206,7 @@ git commit -m "chore: install Marwan SAT 0.2.0"
 3. حدّث Antigravity إلى آخر إصدار، ثم أعد تشغيله.
 3. شغّل `doctor` مجدداً. إن قال إن ملفات الوكلاء معدّلة، فأعد توليدها:
    ```bash
-   npx github:marwan-ahmed/marwan-sat#v0.2.0 regenerate --force
+   npx github:marwan-ahmed/marwan-sat#v0.3.0 regenerate --force
    ```
 
 ---
@@ -274,7 +274,7 @@ SAT يرفض بدء مهمة جديدة وأنت ما زلت على فرع مه�
 | الأمر | متى |
 |---|---|
 | `node .team/bin/phase.mjs status` | لتعرف أين وصلت المهمة الحالية |
-| `npx github:marwan-ahmed/marwan-sat#v0.2.0 doctor` | عند أي شك في التثبيت |
+| `npx github:marwan-ahmed/marwan-sat#v0.3.0 doctor` | عند أي شك في التثبيت |
 | `node .team/bin/phase.mjs cancel --note "السبب"` | لإلغاء المهمة الحالية نهائياً |
 | `git checkout main` ثم `git pull` | بعد كل دمج، وقبل كل مهمة جديدة |
 

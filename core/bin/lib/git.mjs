@@ -66,6 +66,36 @@ export function mergeBase(a, b, cwd) {
   return git(['merge-base', a, b], cwd, { allowFail: true });
 }
 
+// True when <a> is an ancestor of (or equal to) <b>.
+export function isAncestor(a, b, cwd) {
+  return git(['merge-base', '--is-ancestor', a, b], cwd, { allowFail: true }) !== null;
+}
+
+// The commit a task's changes are measured from. Normally the commit the task started on; but when the
+// base branch moved forward and was merged into the task branch (e.g. a SAT update), the merge base with
+// the base branch is used instead, so changes that came from the base branch are not counted as the task's.
+// Both the local base branch and its remote-tracking branch are considered (a stale local "main" must not
+// hide a merge of "origin/main"); the most recent merge base wins.
+export function effectiveBase(cwd, baseBranch, taskBaseSha) {
+  let best = null;
+  for (const ref of baseBranch ? [baseBranch, `origin/${baseBranch}`] : []) {
+    const mb = mergeBase(ref, 'HEAD', cwd);
+    if (!mb || (taskBaseSha && !isAncestor(taskBaseSha, mb, cwd))) continue;
+    if (!best || (mb !== best && isAncestor(best, mb, cwd))) best = mb;
+  }
+  return best || taskBaseSha || null;
+}
+
+// Content of <path> at <rev>, or null when it does not exist there.
+export function showFile(rev, path, cwd) {
+  return git(['show', `${rev}:${path}`], cwd, { allowFail: true, raw: true });
+}
+
+export function filesAt(rev, cwd) {
+  const out = git(['ls-tree', '-r', '--name-only', rev], cwd, { allowFail: true });
+  return out ? out.split('\n').filter(Boolean) : [];
+}
+
 export function remoteUrl(cwd, name = 'origin') {
   return git(['remote', 'get-url', name], cwd, { allowFail: true });
 }

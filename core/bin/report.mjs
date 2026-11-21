@@ -7,7 +7,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findRoot, loadProject } from './lib/config.mjs';
 import { extractIds, isBlocking, readJSONFile, readText } from './lib/contracts.mjs';
-import { git } from './lib/git.mjs';
+import { effectiveBase, git } from './lib/git.mjs';
 import { commandExists } from './lib/proc.mjs';
 import { reportHash, TM_BEGIN, TM_END, TM_PLACEHOLDER } from './lib/report-hash.mjs';
 import { activeTask, appendLedger, readLedger, taskDir, writeTask } from './lib/state.mjs';
@@ -41,7 +41,7 @@ function prUrl(root) {
 function main() {
   const root = findRoot();
   if (!root) throw new Error('Could not find .team/project.yaml');
-  loadProject(root);
+  const cfg = loadProject(root);
   const task = activeTask(root);
   if (!task) throw new Error('No active task.');
   if (!['REPORT', 'GATE_2'].includes(task.phase)) throw new Error(`report runs in the REPORT phase only (current phase: ${task.phase}).`);
@@ -55,7 +55,8 @@ function main() {
   const lv = task.last_verify;
   const vsum = lv ? readJSONFile(join(root, lv.dir, 'summary.json')).value : null;
   const head = git(['rev-parse', 'HEAD'], root);
-  const diffStat = (git(['diff', '--stat', `${task.base_sha}..HEAD`], root, { allowFail: true, raw: true }) || '').replace(/\s+$/, '') || '(لا تغييرات)';
+  const base = effectiveBase(root, cfg.git.base_branch, task.base_sha) || task.base_sha;
+  const diffStat = (git(['diff', '--stat', `${base}..HEAD`], root, { allowFail: true, raw: true }) || '').replace(/\s+$/, '') || '(لا تغييرات)';
   const spec = readText(join(dir, 'SPEC.md'));
   const threat = readText(join(dir, 'THREAT_MODEL.md'));
   const trace = readText(join(dir, 'TRACE.md')) || '';
@@ -71,11 +72,15 @@ function main() {
   for (const f of findings.filter((x) => x.proof === 'suspected' && ['critical', 'high'].includes(x.severity)))
     decisions.push(`ملاحظة ${SEV_AR[f.severity]} **مشتبهة** ${f.id} (${f.src}): بند إلزامي. هل تطلب دورة إصلاح وقائية؟`);
   if (audit && audit.verdict === 'INCOMPLETE') decisions.push('التدقيق الأمني INCOMPLETE: هل تقبل التغطية الجزئية؟');
+  for (const s of (vsum && vsum.steps) || []) {
+    if (s.preexisting) decisions.push(`**دين أمني مسبق خارج نطاق المهمة** («${s.name}»): لم تُدخله هذه المهمة فلا يُحتسب عليها، لكنه قائم في المشروع. افتح مهمة لمعالجته (السجل: \`${s.log || '—'}\`).`);
+  }
 
   // 6. Not done / failed / not tested.
   const gaps = [];
   if (vsum) {
-    for (const s of vsum.steps) if (s.status !== 'pass') gaps.push(`خطوة verify «${s.name}»: ${STATUS_AR[s.status] || s.status}${s.reason ? ` — ${s.reason}` : ''}`);
+    for (const s of vsum.steps) if (s.status !== 'pass') gaps.push(`خطوة verify «${s.name}»: ${s.preexisting ? 'دين مسبق (تحذير)' : STATUS_AR[s.status] || s.status}${s.reason ? ` — ${s.reason}` : ''}`);
+    for (const s of vsum.steps) if (s.kind === 'scanner' && s.scope === 'full' && vsum.scan_scope === 'diff' && ['pass', 'fail'].includes(s.status)) gaps.push(`الماسح «${s.name}» فحص المستودع كله لأن SAT لا يعرف كيف يحصره بالتغيير لهذه الأداة.`);
     for (const c of vsum.checks) if (c.status !== 'pass') gaps.push(`فحص «${c.name}» فشل: ${Array.isArray(c.details) ? c.details.join(', ') : c.details}`);
   } else gaps.push('لا يوجد تشغيل verify مسجّل.');
   for (const id of uncovered) gaps.push(`${id} غير مغطى في TRACE.md`);
@@ -127,9 +132,11 @@ function main() {
   if (vsum) {
     L.push(`آخر تشغيل: \`${lv.dir}\` على \`${String(vsum.sha).slice(0, 10)}\` — **${vsum.result === 'pass' ? 'نجاح' : 'فشل'}**${vsum.dirty ? ' (على شجرة غير نظيفة)' : ''}`);
     L.push('');
+    if (vsum.scan_scope) L.push(`نطاق الماسحات: **${vsum.scan_scope === 'diff' ? `التغيير وحده مقارنةً بـ \`${String(vsum.base || '').slice(0, 10)}\`` : 'المستودع كله'}** (الميثاق §9.6)`);
+    L.push('');
     L.push('| الخطوة | الحالة | رمز الخروج | السجل |');
     L.push('|---|---|---|---|');
-    for (const s of vsum.steps) L.push(`| ${esc(s.name)} | ${STATUS_AR[s.status] || s.status} | ${s.exit_code ?? '—'} | ${s.log ? `\`${s.log}\`` : '—'} |`);
+    for (const s of vsum.steps) L.push(`| ${esc(s.name)} | ${s.preexisting ? 'دين مسبق (تحذير)' : STATUS_AR[s.status] || s.status} | ${s.exit_code ?? '—'} | ${s.log ? `\`${s.log}\`` : '—'} |`);
     for (const c of vsum.checks) L.push(`| check:${esc(c.name)} | ${STATUS_AR[c.status] || c.status} | — | — |`);
   } else L.push('**لا يوجد تشغيل verify مسجّل.**');
   L.push('');

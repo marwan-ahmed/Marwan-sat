@@ -53,6 +53,10 @@
         "seed": { "type": ["string", "null"] },
         "constitution": { "type": ["string", "null"] },
         "require_scanners": { "type": "boolean" },
+        "scan_scope": {
+          "enum": ["diff", "full"],
+          "description": "diff (default): scanners judge only the change against the base commit; pre-existing dependency debt is reported, not blocking. full: whole-repository scans."
+        },
         "scanners": {
           "type": "object",
           "properties": {

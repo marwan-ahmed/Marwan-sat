@@ -130,6 +130,13 @@ export function doctor({ root, satRoot, run = true }) {
     const bin = firstToken(cmd);
     add(commandExists(bin) ? 'ok' : 'warn', `scanner ${k}`, commandExists(bin) ? cmd : `${bin} is not installed locally (required in CI)`);
   }
+  add(
+    cfg.security.scan_scope === 'diff' ? 'info' : 'warn',
+    `scanner scope: ${cfg.security.scan_scope}`,
+    cfg.security.scan_scope === 'diff'
+      ? 'scanners judge only each change against its base; pre-existing debt is reported, not blocking'
+      : 'whole-repository scans: any pre-existing finding in the project fails every task',
+  );
 
   const env = cfg.security.attack_env;
   if (cfg.security.profile === 'web' && env === 'none') add('warn', 'attack environment', 'attack_env = none: the security audit will be INCOMPLETE on the axes that need dynamic testing');

@@ -33,6 +33,7 @@ security:
   seed: .team/seed/
   constitution: null
   require_scanners: false
+  scan_scope: diff            # diff: تحكم الماسحات على تغيير المهمة وحده مقارنةً بالفرع الأساسي، والدين المسبق يُذكر ولا يُفشل · full: فحص المستودع كله
   scanners:
     secrets: gitleaks git --no-banner --redact --exit-code 1
     sast: semgrep scan --config p/default --error --metrics=off --quiet

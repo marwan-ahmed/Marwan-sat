@@ -3,3 +3,5 @@ node_modules/
 Thumbs.db
 sat-evidence/
 *.log
+astronaut-agent-team-console
+*.zip

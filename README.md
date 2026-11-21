@@ -2,7 +2,7 @@
 
 **فريق برمجي من سبعة وكلاء ذكاء اصطناعي، بضوابط حتمية، يُثبَّت في أي مشروع.**
 
-> الإصدار `0.2.0` — **تجريبي**. لم يمر بعد بالتجربة الأولى على مشروع حقيقي (الميثاق §17).
+> الإصدار `0.3.0` — **تجريبي**. لم يمر بعد بالتجربة الأولى على مشروع حقيقي (الميثاق §17).
 > [English summary](README.en.md) · الترخيص: [MIT](#الترخيص) © 2026 مروان أحمد
 >
 > **جديد على Antigravity أو على git؟** ابدأ من [دليل المبتدئين: تشغيل SAT في Antigravity خطوة بخطوة](docs/ANTIGRAVITY_GUIDE.md).
@@ -77,7 +77,7 @@ Marwan SAT ليس «وكيلاً أذكى». هو **نظام حوكمة** حول
 | **تطبيق Google Antigravity** | **مدعوم** | الوكلاء السبعة، والحارس، والأدوات، وCI |
 | Antigravity CLI | يقرأ الملفات نفسها بحسب التوثيق، ولم يُجرَّب | المتوقع: كل ما سبق |
 | محرر Antigravity (IDE) | جزئي | الأدوات وCI. توثيقه لا يذكر الوكلاء المخصّصين، فتحدّث مع الفريق من التطبيق |
-| Claude Code | مخطط له في 0.2.0 | الأدوات وCI |
+| Claude Code | مخطط له في إصدار لاحق | الأدوات وCI |
 | VS Code (Copilot) | مخطط له، ويستفيد من محوّل Claude Code لأنه يقرأ صيغته | الأدوات وCI |
 | Cursor | غير مدعوم بعد | الأدوات وCI |
 | Windsurf / Devin | غير مدعوم بعد | الأدوات وCI |
@@ -97,17 +97,18 @@ Marwan SAT ليس «وكيلاً أذكى». هو **نظام حوكمة** حول
 لا تحتاج إلى استنساخ SAT. من داخل مجلد مشروعك:
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.2.0 init --stack nextjs
-npx github:marwan-ahmed/marwan-sat#v0.2.0 doctor
+npx github:marwan-ahmed/marwan-sat#v0.3.0 init --stack nextjs
+npx github:marwan-ahmed/marwan-sat#v0.3.0 doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.2.0"
+git commit -m "chore: install Marwan SAT 0.3.0"
 ```
 
 - `--stack`: `nextjs` أو `laravel` أو `flutter` أو `react-native` أو `custom`. إن حذفته يحاول `init` اكتشافه من ملفات المشروع.
-- `#v0.2.0` يثبّت الإصدار. بدونه تحصل على آخر نسخة في الفرع الرئيسي، وقد تتغير بين مشروع وآخر.
+- `#v0.3.0` يثبّت الإصدار. بدونه تحصل على آخر نسخة في الفرع الرئيسي، وقد تتغير بين مشروع وآخر.
 - **لماذا هذه المسارات تحديداً لا `git add -A`؟** لأن `-A` يضيف كل تغيير غير محفوظ في مشروعك، فيختلط عملك بملفات SAT في commit واحد برسالة لا تصفه.
 - **التحديث لاحقاً:** الأمر نفسه مع الوسم الأحدث وكلمة `update`: `npx github:marwan-ahmed/marwan-sat#<الوسم-الأحدث> update`.
 - **الترقية من 0.1.x إلى 0.2.0:** أسماء الوكلاء صارت تبدأ بـ`marwan-sat-`، مثل `marwan-sat-tech-manager`. أكمل أي مهمة جارية أولاً، ثم نفّذ `update`، فيحذف ملفات الوكلاء القديمة تلقائياً. بعدها اختر `marwan-sat-tech-manager` من جديد في Antigravity.
+- **الترقية إلى 0.3.0:** صارت الماسحات تحكم على تغيير المهمة وحده، فلا تفشل مهمة بسبب ثغرات أو أسرار أو ملاحظات كانت في المشروع قبلها، ويظهر هذا الدين في التقرير. يمكن التحديث والمهمة جارية: حدّث على الفرع الرئيسي، ثم ادمجه في فرع المهمة. التفاصيل في CHANGELOG والميثاق §9.6.
 
 ### الطريقة 2 — استنساخ مرة واحدة، ثم الأمر `sat` في كل مشاريعك
 
@@ -124,7 +125,7 @@ cd /path/to/your-project
 sat init --stack nextjs
 sat doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.2.0"
+git commit -m "chore: install Marwan SAT 0.3.0"
 ```
 
 - **التحديث:** `git pull` داخل مجلد `marwan-sat`، ثم `sat update` داخل المشروع.

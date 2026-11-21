@@ -2,7 +2,7 @@
 
 **A governed seven-agent software team with deterministic gates, installable in any project.**
 
-> Version `0.2.0` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
+> Version `0.3.0` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
 
 Marwan SAT is not "a smarter agent". It is **governance around agents**: who writes what, when, with what evidence, and who decides.
 
@@ -31,7 +31,7 @@ Deterministic tools (Node.js only, zero dependencies): `phase` (state machine, t
 | **Google Antigravity app** | **Supported** | The seven agents, the guard, the tools and CI |
 | Antigravity CLI | Reads the same files per its docs; untested | Expected: all of the above |
 | Antigravity IDE | Partial | Tools and CI. Its docs don't cover custom agents, so talk to the team from the app |
-| Claude Code | Planned for 0.2.0 | Tools and CI |
+| Claude Code | Planned for a later release | Tools and CI |
 | VS Code (Copilot) | Planned; benefits from the Claude Code adapter, whose format it reads | Tools and CI |
 | Cursor | Not yet | Tools and CI |
 | Windsurf / Devin | Not yet | Tools and CI |
@@ -46,15 +46,17 @@ SAT is installed into each project separately (a git repo with at least one comm
 
 ```bash
 cd /path/to/your-project
-npx github:marwan-ahmed/marwan-sat#v0.2.0 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
-npx github:marwan-ahmed/marwan-sat#v0.2.0 doctor
+npx github:marwan-ahmed/marwan-sat#v0.3.0 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
+npx github:marwan-ahmed/marwan-sat#v0.3.0 doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.2.0"
+git commit -m "chore: install Marwan SAT 0.3.0"
 ```
 
-`#v0.2.0` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
+`#v0.3.0` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
 
 **Upgrading from 0.1.x to 0.2.0:** agent names now start with `marwan-sat-` (for example `marwan-sat-tech-manager`). Finish any active task first, then run `update`: it removes the old agent files. Then pick `marwan-sat-tech-manager` again in Antigravity.
+
+**Upgrading to 0.3.0:** scanners now judge only the task's change, so a task no longer fails on vulnerabilities, secrets or findings that were in the project before it; that debt is reported instead. You can update with a task in progress: update on the main branch, then merge it into the task branch. See the CHANGELOG and charter §9.6.
 
 **Option 2 — clone once, then use `sat` everywhere:**
 

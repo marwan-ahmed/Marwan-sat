@@ -7,6 +7,7 @@ export const STACKS = ['nextjs', 'laravel', 'flutter', 'react-native', 'custom']
 export const PLATFORMS = ['antigravity', 'claude-code'];
 export const PROFILES = ['web', 'mobile'];
 export const ATTACK_ENVS = ['neon-branch', 'docker-postgres', 'docker-mysql', 'none'];
+export const SCAN_SCOPES = ['diff', 'full'];
 export const COMMAND_ORDER = ['install', 'typecheck', 'lint', 'build', 'test'];
 
 export const DEFAULTS = {
@@ -21,6 +22,7 @@ export const DEFAULTS = {
     seed: '.team/seed/',
     constitution: null,
     require_scanners: false,
+    scan_scope: 'diff',
     scanners: { secrets: null, sast: null, dependencies: null },
   },
   gates: { approval: 'agent' },
@@ -58,6 +60,7 @@ export function validateProject(cfg) {
     if (!PLATFORMS.includes(cfg.project.platform)) errors.push(`project.platform: must be one of ${PLATFORMS.join(', ')}`);
   }
   if (!PROFILES.includes(cfg.security.profile)) errors.push(`security.profile: must be one of ${PROFILES.join(', ')}`);
+  if (!SCAN_SCOPES.includes(cfg.security.scan_scope)) errors.push(`security.scan_scope: must be one of ${SCAN_SCOPES.join(', ')}`);
   if (!ATTACK_ENVS.includes(cfg.security.attack_env)) errors.push(`security.attack_env: must be one of ${ATTACK_ENVS.join(', ')}`);
   if (!['agent', 'owner'].includes(cfg.gates.approval)) errors.push('gates.approval: must be "agent" or "owner"');
   if (!['ask', 'allow', 'deny'].includes(cfg.guard.no_task_policy)) errors.push('guard.no_task_policy: must be ask, allow or deny');
