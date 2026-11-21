@@ -64,7 +64,7 @@ export function mergeHooks(existingText) {
     try {
       obj = JSON.parse(existingText);
     } catch {
-      throw new Error('.agents/hooks.json موجود لكنه ليس JSON صالحاً. أصلحه ثم أعد المحاولة.');
+      throw new Error('.agents/hooks.json exists but is not valid JSON. Fix it and try again.');
     }
   }
   obj[HOOK_KEY] = hooksEntry();

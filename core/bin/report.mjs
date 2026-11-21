@@ -40,11 +40,11 @@ function prUrl(root) {
 
 function main() {
   const root = findRoot();
-  if (!root) throw new Error('لم يُعثر على .team/project.yaml');
+  if (!root) throw new Error('Could not find .team/project.yaml');
   loadProject(root);
   const task = activeTask(root);
-  if (!task) throw new Error('لا توجد مهمة نشطة.');
-  if (!['REPORT', 'GATE_2'].includes(task.phase)) throw new Error(`report يعمل في مرحلة REPORT فقط (المرحلة الحالية ${task.phase}).`);
+  if (!task) throw new Error('No active task.');
+  if (!['REPORT', 'GATE_2'].includes(task.phase)) throw new Error(`report runs in the REPORT phase only (current phase: ${task.phase}).`);
   const dir = taskDir(root, task.id);
   const request = readText(join(dir, 'REQUEST.md')) || '(REQUEST.md مفقود)';
   const exec = readText(join(dir, 'EXEC_PROMPT.md'));
@@ -187,7 +187,7 @@ function main() {
   task.report_hash = reportHash(finalText);
   writeTask(root, task);
   appendLedger(root, { type: 'report', task: task.id, sha: head });
-  console.log(`[SAT] ✓ كُتب ${task.id}/REPORT.md. اكتب الآن قسم «تقدير المخاطر» فقط، ثم phase next.`);
+  console.log(`[SAT] ✓ Wrote ${task.id}/REPORT.md. Now write only the risk assessment section, then phase next.`);
 }
 
 try {

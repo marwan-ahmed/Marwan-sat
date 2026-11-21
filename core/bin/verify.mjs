@@ -47,12 +47,12 @@ function ciTask(root, base) {
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   const root = findRoot();
-  if (!root) throw new Error('لم يُعثر على .team/project.yaml');
+  if (!root) throw new Error('Could not find .team/project.yaml');
   const cfg = loadProject(root);
   const ci = Boolean(opts.ci) || process.env.CI === 'true';
   const skip = new Set(typeof opts.skip === 'string' ? opts.skip.split(',').map((s) => s.trim()) : []);
   const timeoutMs = cfg.timeouts.step_minutes * 60 * 1000;
-  if (!isGitRepo(root)) throw new Error('المشروع ليس مستودع git.');
+  if (!isGitRepo(root)) throw new Error('The project is not a git repository.');
 
   // Which task are we verifying?
   let task = null;
@@ -95,7 +95,7 @@ function main() {
     const bin = firstToken(command);
     if (kind === 'scanner' && !commandExists(bin)) {
       const required = ci || cfg.security.require_scanners;
-      return record({ name, kind, command, status: required ? 'fail' : 'missing', reason: `الأداة ${bin} غير مثبتة` });
+      return record({ name, kind, command, status: required ? 'fail' : 'missing', reason: `${bin} is not installed` });
     }
     const r = runShell(command, { cwd: root, timeoutMs });
     const log = join(runDir, `${name}.log`);
@@ -125,7 +125,7 @@ function main() {
       .filter(([rel, hash]) => !existsSync(join(root, rel)) || sha256File(join(root, rel)) !== hash)
       .map(([rel]) => rel);
     check('managed_files', modified.length === 0, modified.length ? modified : 'unchanged');
-  } else check('managed_files', false, 'sat.lock مفقود');
+  } else check('managed_files', false, 'sat.lock is missing');
 
   // 4) Task-scoped integrity.
   if (task) {
@@ -152,17 +152,17 @@ function main() {
         const text = readFileSync(join(root, f), 'utf8');
         if (list.contentRules.some((rx) => rx.test(text))) hits.push(f);
       }
-      check('light_path_sensitive', hits.length === 0, hits.length ? hits.map((h) => `${h} (يتطلب المسار الكامل)`) : 'no sensitive paths');
+      check('light_path_sensitive', hits.length === 0, hits.length ? hits.map((h) => `${h} (requires the full path)`) : 'no sensitive paths');
     }
   } else if (ciInfo && ciInfo.ids.length > 1) {
-    check('single_task_per_pr', false, `PR يحتوي أكثر من مهمة: ${ciInfo.ids.join(', ')}`);
+    check('single_task_per_pr', false, `The PR contains more than one task: ${ciInfo.ids.join(', ')}`);
   }
 
   summary.finished_at = new Date().toISOString();
   writeFileSync(join(runDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
   const rel = toPosix(relative(root, runDir));
-  console.log(`[SAT] النتيجة: ${summary.result === 'pass' ? 'نجاح' : 'فشل'} — الأدلة في ${rel}`);
-  if (summary.dirty) console.log('[SAT] ! شجرة العمل غير نظيفة: هذا التشغيل لا يصلح دليلاً للانتقال إلى المرحلة التالية.');
+  console.log(`[SAT] Result: ${summary.result === 'pass' ? 'PASS' : 'FAIL'} — evidence in ${rel}`);
+  if (summary.dirty) console.log('[SAT] ! The working tree is not clean: this run cannot serve as evidence for moving to the next phase.');
 
   // 5) Record on the task (local runs only).
   if (task && !ci) {
@@ -174,7 +174,7 @@ function main() {
     appendLedger(root, { type: 'verify', task: task.id, phase: task.phase, sha, result: summary.result, dir: rel });
     const limit = cfg.limits.verify_failures + ((task.granted && task.granted.verify_failures) || 0);
     if (['IMPLEMENT', 'FIX'].includes(task.phase) && task.verify_failures >= limit) {
-      console.log(`[SAT] ✗ بلغت المهمة حد الفشل المتتالي (${limit}). تتوقف وتُرفع إلى صاحب القرار.`);
+      console.log(`[SAT] ✗ The task hit the limit of consecutive failures (${limit}). It stops and goes to the owner.`);
       const fresh = readTask(root, task.id);
       fresh.escalated_from = fresh.phase;
       fresh.phase = 'ESCALATED';

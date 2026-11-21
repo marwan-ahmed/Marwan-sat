@@ -22,21 +22,21 @@ import { activeTask, appendLedger, GATES, nextTaskId, readState, taskDir, taskRe
 import { parseFrontmatter } from './lib/yaml.mjs';
 
 const NEXT_ACTOR = {
-  INTAKE: 'المدير التقني: اكتب REQUEST.md بنص طلب صاحب القرار حرفياً، ثم شغّل phase next.',
-  INTERPRET: 'استدعِ request-interpreter لكتابة EXEC_PROMPT.md (وفي المسار الخفيف يكتب المدير التقني TASKS.json بعده)، ثم phase next.',
-  GATE_0: 'البوابة 0: اعرض الأسئلة والافتراضات على صاحب القرار حرفياً، وسجّل رده بنصه في ANSWERS.md، ثم approve GATE_0.',
-  DESIGN: 'استدعِ architect لكتابة SPEC.md وARCH.md وPLAN.md، ثم phase next.',
-  THREAT: 'استدعِ security-auditor (وضع نموذج التهديدات) لكتابة THREAT_MODEL.md، ثم phase next.',
-  GATE_1: 'اكتب TASKS.json من PLAN.md، ثم اعرض ملخص التصميم على صاحب القرار. لا approve إلا بعد موافقته الصريحة.',
-  TESTS: 'استدعِ test-author لكتابة الاختبارات وTRACE.md، ثم phase next (يُنشئ commit التجميد).',
-  IMPLEMENT: 'استدعِ implementer. ينفّذ، ويعمل commit، ثم verify. بعد نجاح verify شغّل phase next.',
-  REVIEW: 'استدعِ adversarial-reviewer (وsecurity-auditor في وضع التدقيق في المسار الكامل) بالتوازي، ثم phase next.',
-  FIX: 'استدعِ implementer لإصلاح الملاحظات الحاجزة فقط، ثم verify، ثم phase next.',
-  REPORT: 'شغّل report.mjs، ثم اكتب قسم تقدير المخاطر فقط، ثم ارفع الفرع وافتح PR، ثم phase next.',
-  GATE_2: 'البوابة 2: اعرض REPORT.md ورابط PR على صاحب القرار. الدمج بيده وحده.',
-  ESCALATED: 'المهمة متوقفة. اعرض التصعيد على صاحب القرار بصيغة الميثاق §7.6، ثم resume بقراره.',
-  CLOSED: 'المهمة مغلقة.',
-  CANCELLED: 'المهمة ملغاة.',
+  INTAKE: 'tech-manager: write REQUEST.md with the owner\'s request verbatim, then run phase next.',
+  INTERPRET: 'Call request-interpreter to write EXEC_PROMPT.md (on the light path the tech manager then writes TASKS.json), then phase next.',
+  GATE_0: 'Gate 0: show the questions and assumptions to the owner verbatim, record the reply verbatim in ANSWERS.md, then approve GATE_0.',
+  DESIGN: 'Call architect to write SPEC.md, ARCH.md and PLAN.md, then phase next.',
+  THREAT: 'Call security-auditor (threat model mode) to write THREAT_MODEL.md, then phase next.',
+  GATE_1: 'Write TASKS.json from PLAN.md, then show the design summary to the owner. Approve only after their explicit approval.',
+  TESTS: 'Call test-author to write the tests and TRACE.md, then phase next (it creates the freeze commit).',
+  IMPLEMENT: 'Call implementer: implement, commit, then verify. After verify passes, run phase next.',
+  REVIEW: 'Call adversarial-reviewer (and, on the full path, security-auditor in audit mode) in parallel, then phase next.',
+  FIX: 'Call implementer to fix the blocking findings only, then verify, then phase next.',
+  REPORT: 'Run report.mjs, write only the risk assessment section, push the branch and open a PR, then phase next.',
+  GATE_2: 'Gate 2: show REPORT.md and the PR link to the owner. Only the owner merges.',
+  ESCALATED: 'The task is paused. Present the escalation to the owner in the charter §7.6 format, then resume with their decision.',
+  CLOSED: 'The task is closed.',
+  CANCELLED: 'The task is cancelled.',
 };
 
 function parseArgs(argv) {
@@ -60,7 +60,7 @@ const fail = (msg) => {
 
 function requireActive(root) {
   const task = activeTask(root);
-  if (!task) fail('لا توجد مهمة نشطة. ابدأ بـ: phase new "<العنوان>"');
+  if (!task) fail('No active task. Start one with: phase new "<title>"');
   return task;
 }
 
@@ -72,7 +72,7 @@ function transition(root, task, to, extra = {}) {
   writeState(root, { active_task: TERMINAL.includes(to) ? null : task.id, phase: to, last_task: task.id });
   appendLedger(root, { type: 'phase', task: task.id, from, to, ...extra });
   console.log(`[SAT] ${task.id}: ${from} → ${to}`);
-  console.log(`[SAT] التالي: ${NEXT_ACTOR[to]}`);
+  console.log(`[SAT] Next: ${NEXT_ACTOR[to]}`);
 }
 
 function escalate(root, task, reason) {
@@ -86,19 +86,19 @@ function effectiveLimit(cfg, task, key) {
 
 function cmdNew(root, cfg, pos, opts) {
   const title = pos[0];
-  if (!title) fail('العنوان مطلوب: phase new "<العنوان>"');
+  if (!title) fail('A title is required: phase new "<title>"');
   const path = opts.path || 'full';
-  if (!['full', 'light'].includes(path)) fail('--path يجب أن يكون full أو light');
+  if (!['full', 'light'].includes(path)) fail('--path must be full or light');
   const st = readState(root);
-  if (st && st.active_task) fail(`توجد مهمة نشطة ${st.active_task}. أغلقها أو ألغِها أولاً.`);
-  if (!isGitRepo(root)) fail('المشروع ليس مستودع git.');
+  if (st && st.active_task) fail(`Task ${st.active_task} is still active. Close or cancel it first.`);
+  if (!isGitRepo(root)) fail('The project is not a git repository.');
   const sha = headSha(root);
-  if (!sha) fail('المستودع بلا أي commit. أنشئ commit أولياً أولاً.');
+  if (!sha) fail('The repository has no commits. Make an initial commit first.');
   const dirty = porcelainFiles(root).filter((f) => !f.startsWith('.team/LEDGER.jsonl'));
-  if (dirty.length) fail(`شجرة العمل غير نظيفة. اعمل commit أو stash أولاً:\n- ${dirty.slice(0, 20).join('\n- ')}`);
+  if (dirty.length) fail(`The working tree is not clean. Commit or stash first:\n- ${dirty.slice(0, 20).join('\n- ')}`);
   const baseRef = currentBranch(root);
   if (baseRef && baseRef.startsWith(cfg.git.task_branch_prefix)) {
-    fail(`أنت على فرع مهمة سابقة (${baseRef}). ارجع إلى الفرع الرئيسي وحدّثه أولاً:\n  git checkout ${cfg.git.base_branch}\n  git pull`);
+    fail(`You are on a previous task's branch (${baseRef}). Go back to the main branch and update it first:\n  git checkout ${cfg.git.base_branch}\n  git pull`);
   }
   const branches = git(['branch', '--list', `${cfg.git.task_branch_prefix}TASK-*`, '--format=%(refname:short)'], root, { allowFail: true }) || '';
   const id = nextTaskId(root, branches.split('\n').filter(Boolean));
@@ -128,8 +128,8 @@ function cmdNew(root, cfg, pos, opts) {
   writeTask(root, task);
   writeState(root, { active_task: id, phase: 'INTAKE' });
   appendLedger(root, { type: 'task_created', task: id, title, path, branch, base_ref: baseRef, base_sha: sha });
-  console.log(`[SAT] أُنشئت المهمة ${id} (${path === 'full' ? 'المسار الكامل' : 'المسار الخفيف'}) على الفرع ${branch}`);
-  console.log(`[SAT] التالي: ${NEXT_ACTOR.INTAKE}`);
+  console.log(`[SAT] Created task ${id} (${path === 'full' ? 'full path' : 'light path'}) on branch ${branch}`);
+  console.log(`[SAT] Next: ${NEXT_ACTOR.INTAKE}`);
 }
 
 function cmdStatus(root, cfg, opts) {
@@ -157,16 +157,16 @@ function cmdStatus(root, cfg, opts) {
 
 function checkTestsPhase(root, cfg, task, dir) {
   const trace = readText(join(dir, 'TRACE.md'));
-  if (!trace) fail('TRACE.md غير موجود.');
+  if (!trace) fail('TRACE.md is missing.');
   const acs = extractIds(readText(join(dir, 'SPEC.md')) || '', 'AC');
   const abs = extractIds(readText(join(dir, 'THREAT_MODEL.md')) || '', 'AB');
   const missing = [...acs, ...abs].filter((id) => !new RegExp(`\\b${id}\\b`).test(trace));
-  if (missing.length) fail(`TRACE.md لا يغطي: ${missing.join(', ')}`);
+  if (missing.length) fail(`TRACE.md does not cover: ${missing.join(', ')}`);
   const T = taskRel(task.id);
   const allowed = [...cfg.paths.tests, `${T}/**`, '.team/DECISIONS.md', '.team/LEDGER.jsonl'];
   const changed = porcelainFiles(root);
   const offenders = changed.filter((f) => !matchAny(f, allowed));
-  if (offenders.length) fail(`ملفات خارج نطاق مرحلة الاختبارات تغيّرت:\n- ${offenders.join('\n- ')}`);
+  if (offenders.length) fail(`Files outside the scope of the TESTS phase changed:\n- ${offenders.join('\n- ')}`);
 }
 
 function freezeTests(root, task) {
@@ -189,7 +189,7 @@ function cmdNext(root, cfg) {
   switch (task.phase) {
     case 'INTAKE': {
       const req = readText(join(dir, 'REQUEST.md'));
-      if (!req || req.trim().length < 3) fail('REQUEST.md فارغ أو غير موجود.');
+      if (!req || req.trim().length < 3) fail('REQUEST.md is empty or missing.');
       return transition(root, task, 'INTERPRET');
     }
     case 'INTERPRET': {
@@ -201,12 +201,12 @@ function cmdNext(root, cfg) {
       }
       if (ep.data.blocking_questions > 0 || ep.data.sensitive_assumptions > 0) {
         if (task.interpret_round >= effectiveLimit(cfg, task, 'question_rounds'))
-          return escalate(root, task, 'استُنفدت جولات الأسئلة ولا تزال هناك أسئلة حاجزة أو افتراضات حساسة');
+          return escalate(root, task, 'Question rounds are used up and blocking questions or sensitive assumptions remain');
         return transition(root, task, 'GATE_0', { blocking_questions: ep.data.blocking_questions, sensitive_assumptions: ep.data.sensitive_assumptions });
       }
       if (task.path === 'full') return transition(root, task, 'DESIGN');
       const { value, error } = readJSONFile(join(dir, 'TASKS.json'));
-      if (error) fail(`المسار الخفيف يحتاج TASKS.json: ${error}`);
+      if (error) fail(`The light path needs TASKS.json: ${error}`);
       const errs = validateTasks(value, task.id);
       if (errs.length) fail(errs.join('\n'));
       return transition(root, task, 'IMPLEMENT');
@@ -214,10 +214,10 @@ function cmdNext(root, cfg) {
     case 'DESIGN': {
       if (task.cr) {
         const decision = latestNumbered(dir, 'CHANGE_DECISION');
-        if (!decision) fail('طلب تغيير مفتوح: يجب أن يكتب المعماري CHANGE_DECISION-<n>.md');
+        if (!decision) fail('A change request is open: the architect must write CHANGE_DECISION-<n>.md');
         const { data } = parseFrontmatter(readText(decision));
         const cls = data && data.classification;
-        if (!['clarification', 'scope_change'].includes(cls)) fail('CHANGE_DECISION: classification يجب أن يكون clarification أو scope_change');
+        if (!['clarification', 'scope_change'].includes(cls)) fail('CHANGE_DECISION: classification must be clarification or scope_change');
         const spec = checkSpecTrace(readText(join(dir, 'SPEC.md')) || '');
         if (spec.errors.length) fail(spec.errors.join('\n'));
         if (cls === 'clarification') {
@@ -227,21 +227,21 @@ function cmdNext(root, cfg) {
         return transition(root, task, 'THREAT', { cr_classification: cls });
       }
       const spec = readText(join(dir, 'SPEC.md'));
-      if (!spec) fail('SPEC.md غير موجود.');
+      if (!spec) fail('SPEC.md is missing.');
       const trace = checkSpecTrace(spec);
       if (trace.errors.length) fail(trace.errors.join('\n'));
       for (const f of ['ARCH.md', 'PLAN.md']) {
         const t = readText(join(dir, f));
-        if (!t || t.trim().length < 40) fail(`${f} غير موجود أو شبه فارغ.`);
+        if (!t || t.trim().length < 40) fail(`${f} is missing or nearly empty.`);
       }
       return transition(root, task, 'THREAT');
     }
     case 'THREAT': {
       const raw = readText(join(dir, 'THREAT_MODEL.md'));
-      if (!raw) fail('THREAT_MODEL.md غير موجود.');
+      if (!raw) fail('THREAT_MODEL.md is missing.');
       const tm = raw.replace(/<!--[\s\S]*?-->/g, '');
       if (extractIds(tm, 'AB').length === 0 && !/NO-ABUSE-CASES:\s*\S+/.test(tm))
-        fail('THREAT_MODEL.md بلا حالات إساءة AB-n، ولا سطر "NO-ABUSE-CASES: <السبب>".');
+        fail('THREAT_MODEL.md has no AB-n abuse cases and no "NO-ABUSE-CASES: <reason>" line.');
       return transition(root, task, 'GATE_1');
     }
     case 'TESTS': {
@@ -255,9 +255,9 @@ function cmdNext(root, cfg) {
     case 'FIX': {
       const lv = task.last_verify;
       const head = headSha(root);
-      if (!lv) fail('لم تُشغَّل verify بعد.');
-      if (lv.result !== 'pass') fail(`آخر تشغيل لـ verify فشل (${lv.dir}).`);
-      if (lv.sha !== head || lv.dirty) fail('آخر verify ناجحة لا تطابق HEAD الحالي أو جرت على شجرة غير نظيفة. اعمل commit ثم شغّل verify مجدداً.');
+      if (!lv) fail('verify has not been run yet.');
+      if (lv.result !== 'pass') fail(`The last verify run failed (${lv.dir}).`);
+      if (lv.sha !== head || lv.dirty) fail('The last passing verify does not match the current HEAD, or ran on a dirty tree. Commit, then run verify again.');
       return transition(root, task, 'REVIEW', { verified_sha: head });
     }
     case 'REVIEW': {
@@ -275,7 +275,7 @@ function cmdNext(root, cfg) {
       const blocking = findings.filter(isBlocking);
       if (blocking.length) {
         if (task.fix_cycles >= effectiveLimit(cfg, task, 'fix_cycles'))
-          return escalate(root, task, `استُنفدت دورات الإصلاح وما زالت ${blocking.length} ملاحظة حاجزة`);
+          return escalate(root, task, `Fix cycles are used up and ${blocking.length} blocking finding(s) remain`);
         task.fix_cycles += 1;
         task.verify_failures = 0;
         archiveReviews(dir, task.fix_cycles);
@@ -285,15 +285,15 @@ function cmdNext(root, cfg) {
     }
     case 'REPORT': {
       const rep = readText(join(dir, 'REPORT.md'));
-      if (!rep) fail('REPORT.md غير موجود. شغّل report.mjs.');
+      if (!rep) fail('REPORT.md is missing. Run report.mjs.');
       if (!task.report_hash || reportHash(rep) !== task.report_hash)
-        fail('الأقسام المولّدة في REPORT.md عُدّلت يدوياً أو لم تُولَّد بعد. أعد تشغيل report.mjs ولا تعدّل إلا قسم المخاطر.');
-      if (!tmSectionFilled(rep)) fail('قسم تقدير المخاطر في REPORT.md لم يُكتب بعد.');
+        fail('The generated sections of REPORT.md were edited by hand or not generated yet. Rerun report.mjs and edit only the risk section.');
+      if (!tmSectionFilled(rep)) fail('The risk assessment section of REPORT.md is not written yet.');
       return transition(root, task, 'GATE_2');
     }
     default:
-      if (GATES.includes(task.phase)) fail(`المرحلة ${task.phase} بوابة: تُغلق فقط بأمر approve بعد قرار صاحب القرار.`);
-      fail(`لا انتقال تلقائي من ${task.phase}.`);
+      if (GATES.includes(task.phase)) fail(`${task.phase} is a gate: it closes only with approve, after the owner decides.`);
+      fail(`There is no automatic transition from ${task.phase}.`);
   }
   return undefined;
 }
@@ -301,19 +301,19 @@ function cmdNext(root, cfg) {
 function cmdApprove(root, cfg, pos, opts) {
   const task = requireActive(root);
   const gate = pos[0];
-  if (!GATES.includes(gate)) fail('approve يحتاج بوابة: GATE_0 أو GATE_1 أو GATE_2');
-  if (task.phase !== gate) fail(`المهمة في ${task.phase} وليست في ${gate}.`);
+  if (!GATES.includes(gate)) fail('approve needs a gate: GATE_0, GATE_1 or GATE_2');
+  if (task.phase !== gate) fail(`The task is in ${task.phase}, not ${gate}.`);
   const decision = opts.decision || 'approve';
   if (!['approve', 'changes', 'cancel'].includes(decision)) fail('--decision: approve | changes | cancel');
   const note = typeof opts.note === 'string' ? opts.note.trim() : '';
-  if (note.length < 2) fail('--note مطلوبة: انقل قرار صاحب القرار بنصه.');
+  if (note.length < 2) fail('--note is required: quote the owner\'s decision verbatim.');
   const dir = taskDir(root, task.id);
   task.gates[gate] = [...(task.gates[gate] || []), { decision, note, at: new Date().toISOString(), mode: cfg.gates.approval }];
   if (decision === 'cancel') return transition(root, task, 'CANCELLED', { gate, note });
   if (gate === 'GATE_0') {
-    if (decision !== 'approve') fail('البوابة 0 تقبل approve أو cancel فقط.');
+    if (decision !== 'approve') fail('Gate 0 accepts only approve or cancel.');
     const ans = readText(join(dir, 'ANSWERS.md'));
-    if (!ans || ans.trim().length < 2) fail('سجّل رد صاحب القرار بنصه في ANSWERS.md أولاً.');
+    if (!ans || ans.trim().length < 2) fail('Record the owner\'s reply verbatim in ANSWERS.md first.');
     task.interpret_round += 1;
     return transition(root, task, 'INTERPRET', { gate, note });
   }
@@ -322,7 +322,7 @@ function cmdApprove(root, cfg, pos, opts) {
     const { value, error } = readJSONFile(join(dir, 'TASKS.json'));
     if (error) fail(`TASKS.json: ${error}`);
     const errs = validateTasks(value, task.id);
-    if (value && value.path !== task.path) errs.push(`TASKS.json: path (${value.path}) لا يطابق مسار المهمة (${task.path})`);
+    if (value && value.path !== task.path) errs.push(`TASKS.json: path (${value.path}) does not match the task path (${task.path})`);
     if (errs.length) fail(errs.join('\n'));
     task.cr = null;
     return transition(root, task, 'TESTS', { gate, note });
@@ -330,7 +330,7 @@ function cmdApprove(root, cfg, pos, opts) {
   // GATE_2
   if (decision === 'changes') {
     const to = opts.to || 'FIX';
-    if (!['FIX', 'DESIGN'].includes(to)) fail('--to يجب أن يكون FIX أو DESIGN');
+    if (!['FIX', 'DESIGN'].includes(to)) fail('--to must be FIX or DESIGN');
     task.verify_failures = 0;
     return transition(root, task, to, { gate, note });
   }
@@ -339,22 +339,22 @@ function cmdApprove(root, cfg, pos, opts) {
 
 function cmdGoto(root, cfg, pos, opts) {
   const task = requireActive(root);
-  if (pos[0] !== 'DESIGN') fail('goto يدعم DESIGN فقط (طلب تغيير).');
-  if (!['IMPLEMENT', 'FIX'].includes(task.phase)) fail('طلب التغيير يُرفع من IMPLEMENT أو FIX فقط.');
+  if (pos[0] !== 'DESIGN') fail('goto supports DESIGN only (a change request).');
+  if (!['IMPLEMENT', 'FIX'].includes(task.phase)) fail('A change request can be raised from IMPLEMENT or FIX only.');
   const cr = latestNumbered(taskDir(root, task.id), 'CHANGE_REQUEST');
-  if (!cr) fail('لا يوجد CHANGE_REQUEST-<n>.md.');
+  if (!cr) fail('There is no CHANGE_REQUEST-<n>.md.');
   task.cr = cr.split(/[\\/]/).pop();
   return transition(root, task, 'DESIGN', { reason: opts.reason || task.cr, change_request: task.cr });
 }
 
 function cmdResume(root, cfg, opts) {
   const task = requireActive(root);
-  if (task.phase !== 'ESCALATED') fail('resume يعمل فقط من ESCALATED.');
+  if (task.phase !== 'ESCALATED') fail('resume works only from ESCALATED.');
   const to = opts.to;
   const allowed = ['INTERPRET', 'DESIGN', 'TESTS', 'IMPLEMENT', 'FIX', 'REVIEW', 'REPORT'];
-  if (!allowed.includes(to)) fail(`--to يجب أن يكون واحداً من: ${allowed.join(', ')}`);
+  if (!allowed.includes(to)) fail(`--to must be one of: ${allowed.join(', ')}`);
   const note = typeof opts.note === 'string' ? opts.note.trim() : '';
-  if (note.length < 2) fail('--note مطلوبة: قرار صاحب القرار بنصه.');
+  if (note.length < 2) fail('--note is required: the owner\'s decision verbatim.');
   task.granted = task.granted || {};
   if (to === 'FIX' || to === 'IMPLEMENT') {
     task.granted.fix_cycles = (task.granted.fix_cycles || 0) + (task.fix_cycles >= effectiveLimit(cfg, task, 'fix_cycles') ? 1 : 0);
@@ -368,7 +368,7 @@ function main() {
   const { pos, opts } = parseArgs(process.argv.slice(2));
   const cmd = pos.shift();
   const root = findRoot();
-  if (!root) fail('لم يُعثر على .team/project.yaml في هذا المجلد أو ما فوقه.');
+  if (!root) fail('Could not find .team/project.yaml in this folder or above it.');
   const cfg = loadProject(root);
   switch (cmd) {
     case 'new':
@@ -383,7 +383,7 @@ function main() {
       return cmdGoto(root, cfg, pos, opts);
     case 'escalate': {
       const task = requireActive(root);
-      if (!pos[0]) fail('السبب مطلوب.');
+      if (!pos[0]) fail('A reason is required.');
       return escalate(root, task, pos[0]);
     }
     case 'resume':

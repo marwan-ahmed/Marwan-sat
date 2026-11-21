@@ -45,7 +45,7 @@ export function writeState(root, state) {
 
 export function readTask(root, id) {
   const t = readJSON(join(taskDir(root, id), 'task.json'), null);
-  if (!t) throw new Error(`المهمة ${id} غير موجودة.`);
+  if (!t) throw new Error(`Task ${id} does not exist.`);
   return t;
 }
 

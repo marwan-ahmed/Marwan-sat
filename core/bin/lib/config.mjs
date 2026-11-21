@@ -71,10 +71,10 @@ export function validateProject(cfg) {
 
 export function loadProject(root) {
   const file = join(root, '.team', 'project.yaml');
-  if (!existsSync(file)) throw new Error(`لم يُعثر على ${file}. شغّل sat init أولاً.`);
+  if (!existsSync(file)) throw new Error(`Not found: ${file}. Install SAT first (sat init).`);
   const raw = parseYaml(readFileSync(file, 'utf8'));
   const cfg = merge(DEFAULTS, raw);
   const errors = validateProject(cfg);
-  if (errors.length) throw new Error(`project.yaml غير صالح:\n- ${errors.join('\n- ')}`);
+  if (errors.length) throw new Error(`project.yaml is invalid:\n- ${errors.join('\n- ')}`);
   return cfg;
 }

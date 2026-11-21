@@ -50,7 +50,7 @@ test('full path: from request to closed, with a fix cycle', () => {
   const base = task(root).base_ref;
   const again = phase(root, 'new', 'مهمة ثانية');
   assert.notEqual(again.code, 0);
-  assert.match(again.out, /فرع مهمة سابقة/);
+  assert.match(again.out, /previous task's branch/);
   git(root, 'checkout', '-q', base);
   assert.equal(phase(root, 'new', 'مهمة ثانية').code, 0);
   assert.equal(git(root, 'rev-parse', '--abbrev-ref', 'HEAD').trim(), 'sat/TASK-002');

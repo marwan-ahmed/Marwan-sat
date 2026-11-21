@@ -29,22 +29,22 @@ const SAT = satCommand(SAT_ROOT, satVersion(SAT_ROOT));
 
 const HELP = `Marwan SAT — Marwan Software Agents Team
 
-الاستخدام:
-  sat init [--stack nextjs|laravel|flutter|react-native|custom] [--platform antigravity] [--name <الاسم>] [--dir <المسار>]
-      يثبّت الفريق في المشروع: .team/ و project.yaml وملفات Antigravity وworkflow الـCI.
-  sat doctor [--quick] [--dir <المسار>]
-      يفحص الجاهزية ويشغّل أوامر project.yaml (--quick يكتفي بفحص وجود الأدوات).
-  sat update [--force] [--major] [--dir <المسار>]
-      يحدّث الملفات المُدارة والمولّدة إلى إصدار أداة sat الحالية. لا يلمس ملفات المشروع.
-  sat regenerate [--force] [--dir <المسار>]
-      يعيد توليد ملفات المنصة وCI بعد تعديل project.yaml.
+Usage:
+  sat init [--stack nextjs|laravel|flutter|react-native|custom] [--platform antigravity] [--name <name>] [--dir <path>]
+      Installs the team in the project: .team/, project.yaml, the Antigravity files and the CI workflow.
+  sat doctor [--quick] [--dir <path>]
+      Checks readiness and runs the project.yaml commands (--quick only checks that the tools exist).
+  sat update [--force] [--major] [--dir <path>]
+      Updates the managed and generated files to this sat version. Never touches project files.
+  sat regenerate [--force] [--dir <path>]
+      Regenerates the platform and CI files after you edit project.yaml.
   sat version
 
-بعد التثبيت، العمل اليومي من داخل المشروع:
+After installing, day-to-day work from inside the project:
   node .team/bin/phase.mjs status | new | next | approve | goto | escalate | resume | cancel
   node .team/bin/verify.mjs
   node .team/bin/report.mjs
-المرجع: .team/CHARTER.md`;
+Reference: .team/CHARTER.md`;
 
 function parseArgs(argv) {
   const pos = [];
@@ -65,12 +65,12 @@ const fail = (m) => {
 };
 
 function cmdInit(root, opts) {
-  if (existsSync(join(root, '.team', 'project.yaml'))) fail(`SAT مثبت في هذا المشروع. استخدم: ${SAT} update أو ${SAT} regenerate`);
+  if (existsSync(join(root, '.team', 'project.yaml'))) fail(`SAT is already installed in this project. Use: ${SAT} update or ${SAT} regenerate`);
   const stack = opts.stack || detectStack(root);
-  if (!stack) fail(`تعذّر اكتشاف المكدس. حدده: --stack ${STACKS.join('|')}`);
-  if (!STACKS.includes(stack)) fail(`مكدس غير مدعوم: ${stack}`);
+  if (!stack) fail(`Could not detect the stack. Set it with: --stack ${STACKS.join('|')}`);
+  if (!STACKS.includes(stack)) fail(`Unsupported stack: ${stack}`);
   const platform = opts.platform || 'antigravity';
-  if (platform !== 'antigravity') fail(`المنصة ${platform} مخطط لها في إصدار لاحق. الإصدار الحالي يدعم antigravity.`);
+  if (platform !== 'antigravity') fail(`Platform ${platform} is planned for a later release. This version supports antigravity.`);
   const pm = detectPackageManager(root);
   const pmc = pmCommands(pm);
   const version = satVersion(SAT_ROOT);
@@ -110,26 +110,26 @@ function cmdInit(root, opts) {
   ensureGitignore(root);
   writeLock(root, buildLock(SAT_ROOT, stack, platform, managed, generated));
 
-  console.log(`[SAT] ✓ ثُبّت Marwan SAT ${version} (المكدس: ${stack}، المنصة: ${platform}، مدير الحزم: ${pm}).`);
-  console.log(`[SAT]   ${Object.keys(managed).length} ملفاً مُداراً، ${Object.keys(generated).length} ملفاً مولّداً.`);
-  console.log('[SAT] الخطوات التالية:');
-  console.log('  1) راجع .team/project.yaml (الأوامر، والمسارات، والملف الأمني، وبيئة الهجوم).');
-  console.log(`  2) شغّل: ${SAT} doctor`);
-  console.log('  3) اعمل commit لملفات SAT، وفعّل Branch protection على الفرع الرئيسي في GitHub.');
-  console.log('  4) ابدأ العمل في Antigravity: اختر الوكيل tech-manager واكتب له: «مهمة جديدة: <طلبك>».');
-  if (!existsSync(join(root, 'AGENTS.md'))) console.log('  ! لا يوجد AGENTS.md: يُنصح بإنشائه لقواعد المشروع الخاصة.');
+  console.log(`[SAT] ✓ Installed Marwan SAT ${version} (stack: ${stack}, platform: ${platform}, package manager: ${pm}).`);
+  console.log(`[SAT]   ${Object.keys(managed).length} managed files, ${Object.keys(generated).length} generated files.`);
+  console.log('[SAT] Next steps:');
+  console.log('  1) Review .team/project.yaml (commands, paths, security profile, attack environment).');
+  console.log(`  2) Run: ${SAT} doctor`);
+  console.log('  3) Commit the SAT files, and turn on branch protection for the main branch on GitHub.');
+  console.log('  4) Start in the Antigravity app: pick the tech-manager agent and send "New task: <your request>" (Arabic works too).');
+  if (!existsSync(join(root, 'AGENTS.md'))) console.log('  ! No AGENTS.md: consider adding one for project-specific rules (for example from the arabic-agents template).');
 }
 
 function cmdUpdate(root, opts) {
   const lock = readLock(root);
-  if (!lock) fail(`SAT غير مثبت هنا (sat.lock مفقود). استخدم: ${SAT} init`);
+  if (!lock) fail(`SAT is not installed here (sat.lock is missing). Use: ${SAT} init`);
   const cfg = loadProject(root);
   const version = satVersion(SAT_ROOT);
   const major = (v) => Number(String(v).split('.')[0]);
-  if (major(version) > major(lock.sat_version) && !opts.major) fail(`الانتقال من ${lock.sat_version} إلى ${version} إصدار رئيسي قد يكسر التوافق. اقرأ CHANGELOG ثم أعد التشغيل مع --major.`);
+  if (major(version) > major(lock.sat_version) && !opts.major) fail(`Moving from ${lock.sat_version} to ${version} is a major upgrade and may break compatibility. Read the CHANGELOG, then rerun with --major.`);
   const modified = locallyModified(root, lock);
   if (modified.length && !opts.force)
-    fail(`ملفات مُدارة أو مولّدة عُدّلت محلياً، ولن أكتب فوقها:\n- ${modified.join('\n- ')}\nانقل تعديلاتك إلى مستودع SAT (أو إلى project.yaml/AGENTS.md)، ثم أعد التشغيل. للكتابة فوقها: --force`);
+    fail(`Managed or generated files were edited locally, so they will not be overwritten:\n- ${modified.join('\n- ')}\nMove your edits into the SAT repository (or into project.yaml / AGENTS.md), then rerun. To overwrite them: --force`);
   const managed = managedFiles(SAT_ROOT, cfg.project.stack);
   const generated = generatedFiles(SAT_ROOT, cfg, root);
   const changed = [...Object.entries(managed), ...Object.entries(generated)].filter(([rel, text]) => currentTrackedHash(root, rel) !== trackedHash(rel, text)).map(([rel]) => rel);
@@ -138,15 +138,15 @@ function cmdUpdate(root, opts) {
   writeLock(root, buildLock(SAT_ROOT, cfg.project.stack, cfg.project.platform, managed, generated));
   ensureGitignore(root);
   appendFileSync(join(root, '.team', 'LEDGER.jsonl'), `${JSON.stringify({ ts: new Date().toISOString(), type: 'sat_updated', from: lock.sat_version, to: version })}\n`, 'utf8');
-  console.log(`[SAT] ✓ حُدّث SAT من ${lock.sat_version} إلى ${version}: ${changed.length} ملفاً تغيّر، ${removed.length} حُذف.`);
+  console.log(`[SAT] ✓ Updated SAT from ${lock.sat_version} to ${version}: ${changed.length} files changed, ${removed.length} removed.`);
   for (const r of changed) console.log(`  ~ ${r}`);
   for (const r of removed) console.log(`  - ${r}`);
-  console.log(`[SAT] لم يُلمس project.yaml ولا DECISIONS.md ولا المهام. شغّل: ${SAT} doctor`);
+  console.log(`[SAT] project.yaml, DECISIONS.md and the tasks were not touched. Run: ${SAT} doctor`);
 }
 
 function cmdRegenerate(root, opts) {
   const lock = readLock(root);
-  if (!lock) fail('SAT غير مثبت هنا.');
+  if (!lock) fail('SAT is not installed here.');
   const cfg = loadProject(root);
   const modified = Object.entries(lock.generated || {})
     .filter(([rel, hash]) => {
@@ -154,7 +154,7 @@ function cmdRegenerate(root, opts) {
       return now !== null && now !== hash;
     })
     .map(([rel]) => rel);
-  if (modified.length && !opts.force) fail(`ملفات مولّدة عُدّلت يدوياً:\n- ${modified.join('\n- ')}\nللكتابة فوقها: --force`);
+  if (modified.length && !opts.force) fail(`Generated files were edited by hand:\n- ${modified.join('\n- ')}\nTo overwrite them: --force`);
   const generated = generatedFiles(SAT_ROOT, cfg, root);
   removeStale(root, { managed: {}, generated: lock.generated }, {}, generated);
   writeFiles(root, generated);
@@ -163,8 +163,8 @@ function cmdRegenerate(root, opts) {
   next.managed = managedLock;
   next.sat_version = lock.sat_version;
   writeLock(root, next);
-  console.log(`[SAT] ✓ أُعيد توليد ${Object.keys(generated).length} ملفاً.`);
-  if (lock.stack !== cfg.project.stack) console.log(`[SAT] ! تغيّر المكدس في project.yaml: شغّل ${SAT} update لتحديث المسارات الحساسة.`);
+  console.log(`[SAT] ✓ Regenerated ${Object.keys(generated).length} files.`);
+  if (lock.stack !== cfg.project.stack) console.log(`[SAT] ! The stack changed in project.yaml: run ${SAT} update to refresh the sensitive paths.`);
 }
 
 function cmdDoctor(root, opts) {
@@ -175,7 +175,7 @@ function cmdDoctor(root, opts) {
   }
   const fails = results.filter((r) => r.level === 'fail').length;
   const warns = results.filter((r) => r.level === 'warn').length;
-  console.log(`\n[SAT] الحكم: ${fails ? 'غير جاهز' : 'جاهز'} (${fails} عائق، ${warns} تنبيه).`);
+  console.log(`\n[SAT] Verdict: ${fails ? 'NOT READY' : 'READY'} (${fails} blocking, ${warns} warnings).`);
   process.exitCode = fails ? 1 : 0;
 }
 

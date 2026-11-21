@@ -75,8 +75,8 @@ test('presets render for every stack', () => {
     const yaml = readFileSync(join(root, '.team/project.yaml'), 'utf8');
     assert.match(yaml, new RegExp(`stack: ${stack}`));
     const d = satCli(root, 'doctor', '--quick');
-    assert.match(d.out, /الحكم/);
-    assert.match(d.out, /✓ guard يعمل على هذا الجهاز/, 'live guard self-test passes');
+    assert.match(d.out, /Verdict:/);
+    assert.match(d.out, /✓ guard works on this machine/, 'live guard self-test passes');
   }
 });
 
@@ -93,5 +93,5 @@ test('cli: "run this next" hints use the command the owner actually has (npx, sa
   const root = makeProject();
   const again = satCli(root, 'init', '--stack', 'custom');
   assert.notEqual(again.code, 0);
-  assert.ok(again.out.includes(`استخدم: ${satCommand(SAT_ROOT, version)} update`), again.out);
+  assert.ok(again.out.includes(`Use: ${satCommand(SAT_ROOT, version)} update`), again.out);
 });

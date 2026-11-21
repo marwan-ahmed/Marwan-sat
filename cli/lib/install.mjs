@@ -46,7 +46,7 @@ export function managedFiles(satRoot, stack) {
 
 // Files SAT regenerates from project.yaml (platform adapter + CI).
 export function generatedFiles(satRoot, cfg, root) {
-  if (cfg.project.platform !== 'antigravity') throw new Error(`المنصة ${cfg.project.platform} مخطط لها في إصدار لاحق. استخدم antigravity.`);
+  if (cfg.project.platform !== 'antigravity') throw new Error(`Platform ${cfg.project.platform} is planned for a later release. Use antigravity.`);
   const files = generateAntigravity({ satRoot, cfg, root });
   const stack = cfg.project.stack;
   const setupPath = join(satRoot, 'stacks', stack, 'ci-setup.yml');
@@ -137,10 +137,10 @@ export function ensureGitignore(root) {
 
 export function renderPreset(satRoot, stack, vars) {
   const presetPath = join(satRoot, 'stacks', stack, 'preset.yaml');
-  if (!existsSync(presetPath)) throw new Error(`لا يوجد إعداد مسبق للمكدس ${stack}`);
+  if (!existsSync(presetPath)) throw new Error(`No preset for stack ${stack}`);
   let text = readFileSync(presetPath, 'utf8');
   for (const [k, v] of Object.entries(vars)) text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), () => v);
   const left = /\{\{(\w+)\}\}/.exec(text);
-  if (left) throw new Error(`متغير غير معرّف في preset.yaml: ${left[1]}`);
+  if (left) throw new Error(`Undefined variable in preset.yaml: ${left[1]}`);
   return text;
 }

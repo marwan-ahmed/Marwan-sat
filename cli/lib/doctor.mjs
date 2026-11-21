@@ -18,39 +18,39 @@ export function doctor({ root, satRoot, run = true }) {
   const add = (level, title, detail = '') => results.push({ level, title, detail });
 
   const [major] = process.versions.node.split('.').map(Number);
-  add(major >= 20 ? 'ok' : 'fail', `Node.js ${process.versions.node}`, major >= 20 ? '' : 'يلزم الإصدار 20 أو أحدث');
+  add(major >= 20 ? 'ok' : 'fail', `Node.js ${process.versions.node}`, major >= 20 ? '' : 'version 20 or newer is required');
 
   if (!isGitRepo(root)) {
-    add('fail', 'git', 'المجلد ليس مستودع git');
+    add('fail', 'git', 'this folder is not a git repository');
   } else {
-    add(headSha(root) ? 'ok' : 'fail', 'git: commit أولي', headSha(root) ? '' : 'لا يوجد أي commit');
+    add(headSha(root) ? 'ok' : 'fail', 'git: initial commit', headSha(root) ? '' : 'there are no commits yet');
     const url = remoteUrl(root);
-    add(url && /github\.com/i.test(url) ? 'ok' : 'warn', 'remote على GitHub', url || 'لا يوجد remote باسم origin');
+    add(url && /github\.com/i.test(url) ? 'ok' : 'warn', 'GitHub remote', url || 'no remote named origin');
   }
 
   const lock = readLock(root);
   if (!lock) {
-    add('fail', 'تثبيت SAT', `sat.lock مفقود: شغّل ${satCommand(satRoot, satVersion(satRoot))} init`);
+    add('fail', 'SAT install', `sat.lock is missing: run ${satCommand(satRoot, satVersion(satRoot))} init`);
     return results;
   }
   const cliVersion = satVersion(satRoot);
-  add(lock.sat_version === cliVersion ? 'ok' : 'warn', `إصدار SAT في المشروع ${lock.sat_version}`, lock.sat_version === cliVersion ? '' : `أداة sat الحالية ${cliVersion}: شغّل ${satCommand(satRoot, cliVersion)} update`);
+  add(lock.sat_version === cliVersion ? 'ok' : 'warn', `SAT version in the project: ${lock.sat_version}`, lock.sat_version === cliVersion ? '' : `this sat is ${cliVersion}: run ${satCommand(satRoot, cliVersion)} update`);
 
   let cfg;
   try {
     cfg = loadProject(root);
-    add('ok', 'project.yaml صالح');
+    add('ok', 'project.yaml is valid');
   } catch (e) {
     add('fail', 'project.yaml', e.message);
     return results;
   }
 
   const modified = locallyModified(root, lock);
-  add(modified.length ? 'fail' : 'ok', 'ملفات القالب المُدارة والمولّدة سليمة', modified.join(', '));
+  add(modified.length ? 'fail' : 'ok', 'managed and generated template files are intact', modified.join(', '));
 
   const agentsDir = join(root, '.agents', 'agents');
   const missing = ROLE_IDS.filter((id) => !existsSync(join(agentsDir, `${id}.md`)));
-  add(missing.length ? 'fail' : 'ok', 'ملفات الوكلاء السبعة في .agents/agents', missing.length ? `مفقود: ${missing.join(', ')}` : '');
+  add(missing.length ? 'fail' : 'ok', 'the seven agent files in .agents/agents', missing.length ? `missing: ${missing.join(', ')}` : '');
   const hooksPath = join(root, '.agents', 'hooks.json');
   let hookOk = false;
   try {
@@ -58,7 +58,7 @@ export function doctor({ root, satRoot, run = true }) {
   } catch {
     hookOk = false;
   }
-  add(hookOk ? 'ok' : 'fail', 'guard مسجّل في .agents/hooks.json');
+  add(hookOk ? 'ok' : 'fail', 'guard is registered in .agents/hooks.json');
   // Live self-test: run the guard exactly as Antigravity does (JSON on stdin) and expect it to block a protected file.
   const probe = spawnSync(process.execPath, [join(root, '.team', 'bin', 'guard.mjs')], {
     cwd: root,
@@ -72,8 +72,8 @@ export function doctor({ root, satRoot, run = true }) {
   } catch {
     probeDecision = null;
   }
-  const probeErr = (probe.stderr || (probe.error && probe.error.message) || 'لا مخرجات').trim().split('\n').slice(-3).join(' | ');
-  add(probeDecision === 'deny' ? 'ok' : 'fail', 'guard يعمل على هذا الجهاز (اختبار حي: يرفض تعديل ملف محمي)', probeDecision === 'deny' ? '' : `النتيجة: ${probeDecision || probeErr}`);
+  const probeErr = (probe.stderr || (probe.error && probe.error.message) || 'no output').trim().split('\n').slice(-3).join(' | ');
+  add(probeDecision === 'deny' ? 'ok' : 'fail', 'guard works on this machine (live test: it blocks editing a protected file)', probeDecision === 'deny' ? '' : `result: ${probeDecision || probeErr}`);
   if (existsSync(agentsDir)) {
     const known = JSON.parse(readFileSync(join(satRoot, 'adapters', 'antigravity', 'tools.json'), 'utf8'));
     const knownNames = new Set(Object.values(known.capabilities).flat());
@@ -83,56 +83,56 @@ export function doctor({ root, satRoot, run = true }) {
       for (const t of (data && data.tools) || []) used.add(t);
     }
     const unknown = [...used].filter((t) => !knownNames.has(t));
-    add(unknown.length ? 'fail' : 'warn', 'أسماء أدوات Antigravity', unknown.length ? `غير معروفة: ${unknown.join(', ')}` : `${[...used].join(', ')} — موثّقة، لكن افتح كل وكيل مرة في Antigravity للتأكد (اسم خاطئ قد يعلّق الوكيل)`);
+    add(unknown.length ? 'fail' : 'warn', 'Antigravity tool names', unknown.length ? `unknown: ${unknown.join(', ')}` : `${[...used].join(', ')} — documented, but open each agent once in Antigravity to confirm (a wrong name can hang an agent)`);
   }
-  add(existsSync(join(root, '.github', 'workflows', 'sat-verify.yml')) ? 'ok' : 'fail', 'workflow الـCI: .github/workflows/sat-verify.yml');
+  add(existsSync(join(root, '.github', 'workflows', 'sat-verify.yml')) ? 'ok' : 'fail', 'CI workflow: .github/workflows/sat-verify.yml');
 
   const gi = existsSync(join(root, '.gitignore')) ? readFileSync(join(root, '.gitignore'), 'utf8') : '';
-  add(gi.includes('.team/STATE.json') ? 'ok' : 'warn', '.gitignore يستثني ملفات SAT المؤقتة');
-  add(existsSync(join(root, 'AGENTS.md')) ? 'ok' : 'warn', 'AGENTS.md (قواعد المشروع)', existsSync(join(root, 'AGENTS.md')) ? '' : 'غير موجود: يُنصح بإنشائه، مثلاً من قالب arabic-agents');
+  add(gi.includes('.team/STATE.json') ? 'ok' : 'warn', '.gitignore excludes the SAT temporary files');
+  add(existsSync(join(root, 'AGENTS.md')) ? 'ok' : 'warn', 'AGENTS.md (project rules)', existsSync(join(root, 'AGENTS.md')) ? '' : 'not found: consider adding one, for example from the arabic-agents template');
 
   for (const name of [...COMMAND_ORDER, 'start']) {
     const cmd = cfg.commands[name];
     if (!cmd) {
-      add(name === 'test' ? 'warn' : 'info', `الأمر ${name}`, 'غير مُعدّ');
+      add(name === 'test' ? 'warn' : 'info', `command ${name}`, 'not configured');
       continue;
     }
     const bin = firstToken(cmd);
     if (!commandExists(bin)) {
-      add('fail', `الأمر ${name}`, `الأداة ${bin} غير موجودة: ${cmd}`);
+      add('fail', `command ${name}`, `${bin} was not found: ${cmd}`);
       continue;
     }
     if (!run || name === 'start') {
-      add('ok', `الأمر ${name}`, `${cmd} (لم يُشغَّل)`);
+      add('ok', `command ${name}`, `${cmd} (not run)`);
       continue;
     }
     const r = runShell(cmd, { cwd: root, timeoutMs: cfg.timeouts.step_minutes * 60 * 1000 });
-    add(r.exitCode === 0 ? 'ok' : 'fail', `الأمر ${name}`, r.exitCode === 0 ? cmd : `${cmd} → exit ${r.exitCode}\n${(r.stderr || r.stdout).split('\n').slice(-8).join('\n')}`);
+    add(r.exitCode === 0 ? 'ok' : 'fail', `command ${name}`, r.exitCode === 0 ? cmd : `${cmd} → exit ${r.exitCode}\n${(r.stderr || r.stdout).split('\n').slice(-8).join('\n')}`);
   }
 
   for (const [k, cmd] of Object.entries(cfg.security.scanners)) {
     if (!cmd) {
-      add('warn', `الماسح ${k}`, 'غير مُعدّ: سيظهر في التقرير ضمن «ما لم يُختبر»');
+      add('warn', `scanner ${k}`, 'not configured: the report will list it under what was not tested');
       continue;
     }
     const bin = firstToken(cmd);
-    add(commandExists(bin) ? 'ok' : 'warn', `الماسح ${k}`, commandExists(bin) ? cmd : `${bin} غير مثبت محلياً (إلزامي في CI)`);
+    add(commandExists(bin) ? 'ok' : 'warn', `scanner ${k}`, commandExists(bin) ? cmd : `${bin} is not installed locally (required in CI)`);
   }
 
   const env = cfg.security.attack_env;
-  if (cfg.security.profile === 'web' && env === 'none') add('warn', 'بيئة الهجوم', 'attack_env = none: سيكون التدقيق الأمني INCOMPLETE في المحاور التي تحتاج اختباراً ديناميكياً');
-  else if (env !== 'none' && !cfg.security.env_up) add('warn', 'بيئة الهجوم', `attack_env = ${env} لكن env_up غير مُعدّ`);
-  else if (env === 'neon-branch') add(commandExists('neonctl') ? 'ok' : 'warn', 'بيئة الهجوم: neonctl');
-  else if (env.startsWith('docker')) add(commandExists('docker') ? 'ok' : 'warn', 'بيئة الهجوم: docker');
+  if (cfg.security.profile === 'web' && env === 'none') add('warn', 'attack environment', 'attack_env = none: the security audit will be INCOMPLETE on the axes that need dynamic testing');
+  else if (env !== 'none' && !cfg.security.env_up) add('warn', 'attack environment', `attack_env = ${env} but env_up is not configured`);
+  else if (env === 'neon-branch') add(commandExists('neonctl') ? 'ok' : 'warn', 'attack environment: neonctl');
+  else if (env.startsWith('docker')) add(commandExists('docker') ? 'ok' : 'warn', 'attack environment: docker');
 
   if (commandExists('gh')) {
     const repo = spawnSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { cwd: root, encoding: 'utf8' });
     if (repo.status === 0 && repo.stdout.trim()) {
       const name = repo.stdout.trim();
       const prot = spawnSync('gh', ['api', `repos/${name}/branches/${cfg.git.base_branch}/protection`, '--silent'], { cwd: root, encoding: 'utf8' });
-      add(prot.status === 0 ? 'ok' : 'fail', `Branch protection على ${cfg.git.base_branch}`, prot.status === 0 ? '' : 'غير مفعّلة أو لا صلاحية لقراءتها: فعّلها واشترط مراجعتك قبل الدمج');
-    } else add('warn', 'GitHub', 'تعذّر قراءة المستودع عبر gh');
-  } else add('warn', 'Branch protection', 'أداة gh غير مثبتة: تحقق يدوياً من حماية الفرع الرئيسي');
+      add(prot.status === 0 ? 'ok' : 'fail', `Branch protection on ${cfg.git.base_branch}`, prot.status === 0 ? '' : 'off, or not readable with your permissions: turn it on and require your review before merging');
+    } else add('warn', 'GitHub', 'could not read the repository through gh');
+  } else add('warn', 'Branch protection', 'gh is not installed: check the main branch protection by hand');
 
   return results;
 }

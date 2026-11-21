@@ -26,13 +26,13 @@ const SHELL_TOOLS = /^(run_command|run_terminal_command|bash|shell)$/;
 const PATH_KEYS = ['TargetFile', 'AbsolutePath', 'FilePath', 'File', 'Path', 'path', 'file_path', 'target_file', 'DestinationFile', 'SourceFile'];
 
 const DANGEROUS = [
-  [/\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)\b/, 'حذف تكراري قسري (rm -rf) محظور'],
-  [/\bsudo\b/, 'sudo محظور'],
-  [/\bgit\s+push\b[^\n]*(--force\b|--force-with-lease\b|\s-f\b)/, 'git push --force محظور'],
-  [/\bgit\s+push\b[^\n]*\s(main|master)\b/, 'الدفع إلى الفرع الرئيسي محظور: الدمج بيد صاحب القرار عبر PR'],
-  [/\bgit\s+reset\s+--hard\b/, 'git reset --hard محظور'],
-  [/\bgit\s+(commit|push)\b[^\n]*--no-verify\b/, '--no-verify محظور'],
-  [/\bgit\s+config\b[^\n]*\bcore\.hooksPath\b/, 'تغيير مسار git hooks محظور'],
+  [/\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*r)\b/, 'Forced recursive delete (rm -rf) is blocked'],
+  [/\bsudo\b/, 'sudo is blocked'],
+  [/\bgit\s+push\b[^\n]*(--force\b|--force-with-lease\b|\s-f\b)/, 'git push --force is blocked'],
+  [/\bgit\s+push\b[^\n]*\s(main|master)\b/, 'Pushing to the main branch is blocked: the owner merges through a PR'],
+  [/\bgit\s+reset\s+--hard\b/, 'git reset --hard is blocked'],
+  [/\bgit\s+(commit|push)\b[^\n]*--no-verify\b/, '--no-verify is blocked'],
+  [/\bgit\s+config\b[^\n]*\bcore\.hooksPath\b/, 'Changing the git hooks path is blocked'],
 ];
 
 function out(decision, reason) {
@@ -69,7 +69,7 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
   try {
     cfg = loadProject(root);
   } catch (e) {
-    return { decision: 'ask', reason: `project.yaml غير صالح: ${e.message}` };
+    return { decision: 'ask', reason: `project.yaml is invalid: ${e.message}` };
   }
   const state = readJSON(statePath(root), null);
   const task = state && state.active_task ? readJSON(join(taskDir(root, state.active_task), 'task.json'), null) : null;
@@ -79,11 +79,11 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
     const cmd = String(args.CommandLine || args.command || args.cmd || '');
     for (const [rx, why] of DANGEROUS) if (rx.test(cmd)) return { decision: 'deny', reason: why };
     if (cfg.gates.approval === 'owner' && /phase(\.mjs)?\s+(approve|resume)\b/.test(cmd))
-      return { decision: 'deny', reason: 'الموافقة على البوابات واستئناف المهام يشغّلها صاحب القرار بنفسه (gates.approval = owner)' };
+      return { decision: 'deny', reason: 'Gate approvals and task resumes are run by the owner personally (gates.approval = owner)' };
     if (phase === 'REVIEW') {
       const hosts = [...cmd.matchAll(/\bhttps?:\/\/([^/\s:'"]+)/gi)].map((m) => m[1].toLowerCase());
       const external = hosts.filter((h) => !['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]'].includes(h));
-      if (external.length) return { decision: 'deny', reason: `أثناء المراجعة لا يُسمح إلا بأهداف localhost (قواعد الاشتباك): ${external.join(', ')}` };
+      if (external.length) return { decision: 'deny', reason: `During review only localhost targets are allowed (rules of engagement): ${external.join(', ')}` };
     }
     return { decision: 'allow' };
   }
@@ -91,26 +91,26 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
   if (READ_TOOLS.test(tool)) {
     const p = targetPath(args);
     if (p && phase === 'REVIEW' && /IMPLEMENTATION_NOTES\.md$/i.test(toPosix(p)))
-      return { decision: 'deny', reason: 'المراجعان يعملان بسياق نظيف: لا قراءة لملاحظات المنفّذ' };
+      return { decision: 'deny', reason: 'Reviewers work with a clean context: the implementer notes are off limits' };
     return { decision: 'allow' };
   }
 
   if (!WRITE_TOOLS.test(tool)) return { decision: 'allow' };
 
   const p = targetPath(args);
-  if (!p) return { decision: 'ask', reason: `تعذّر تحديد الملف المستهدف للأداة ${tool}` };
+  if (!p) return { decision: 'ask', reason: `Could not determine the target file of tool ${tool}` };
   const abs = resolve(root, p);
   const gemCfg = join(homedir(), '.gemini', 'config');
-  if (sameOrInside(abs, gemCfg)) return { decision: 'deny', reason: 'لا يعدّل الوكلاء إعدادات Antigravity العامة' };
+  if (sameOrInside(abs, gemCfg)) return { decision: 'deny', reason: 'Agents do not edit the global Antigravity settings' };
   if (!sameOrInside(abs, root)) return { decision: 'allow' };
   const rel = toPosix(relative(root, abs));
 
-  if (matchAny(rel, protectedGlobs(root))) return { decision: 'deny', reason: `${rel} ملف تملكه أدوات SAT أو القالب، ولا يكتبه أي وكيل` };
+  if (matchAny(rel, protectedGlobs(root))) return { decision: 'deny', reason: `${rel} is owned by the SAT tools or template; no agent writes it` };
 
   if (!task) {
     const policy = cfg.guard.no_task_policy;
     if (policy === 'allow') return { decision: 'allow' };
-    const why = 'لا توجد مهمة SAT نشطة. ابدأ عبر المدير التقني: node .team/bin/phase.mjs new "<العنوان>"';
+    const why = 'No active SAT task. Start one through the tech manager: node .team/bin/phase.mjs new "<title>"';
     return { decision: policy === 'deny' ? 'deny' : 'ask', reason: why };
   }
 
@@ -118,7 +118,7 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
   if (matchAny(rel, allowed)) return { decision: 'allow' };
   return {
     decision: 'deny',
-    reason: `المرحلة الحالية ${phase} لا تسمح بالكتابة في ${rel}. المسموح: ${allowed.length ? allowed.join(', ') : 'لا شيء (بوابة أو مرحلة متوقفة)'}`,
+    reason: `Phase ${phase} does not allow writing ${rel}. Allowed: ${allowed.length ? allowed.join(', ') : 'nothing (a gate or a paused phase)'}`,
   };
 }
 
@@ -129,12 +129,12 @@ if (isMain) {
     const raw = readStdin();
     payload = raw.trim() ? JSON.parse(raw) : {};
   } catch {
-    out('ask', 'تعذّر قراءة مدخلات الـhook');
+    out('ask', 'Could not read the hook input');
   }
   try {
     const d = decide(payload);
     out(d.decision, d.reason);
   } catch (e) {
-    out('ask', `خطأ داخلي في guard: ${e.message}`);
+    out('ask', `Internal guard error: ${e.message}`);
   }
 }
