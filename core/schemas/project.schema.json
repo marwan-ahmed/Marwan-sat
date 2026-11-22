@@ -69,6 +69,14 @@
     },
     "gates": { "type": "object", "properties": { "approval": { "enum": ["agent", "owner"] } } },
     "guard": { "type": "object", "properties": { "no_task_policy": { "enum": ["ask", "allow", "deny"] } } },
+    "audit": {
+      "type": "object",
+      "description": "Audit tasks (charter §5.5, §7.8): the size limits of one backlog item.",
+      "properties": {
+        "max_findings_per_task": { "type": "integer", "minimum": 1, "default": 3 },
+        "max_files_per_task": { "type": "integer", "minimum": 1, "default": 8 }
+      }
+    },
     "limits": {
       "type": "object",
       "properties": {

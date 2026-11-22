@@ -35,5 +35,8 @@ Reference: OWASP MASVS v2.1 (8 categories). The backend the app talks to is audi
 ## privacy (MASVS-PRIVACY)
 - Data minimisation; clear purpose for every permission; no personal data to analytics/third parties beyond what the task specifies.
 
+## Project audit — controls that should exist (audit task, findings/security.json)
+In a project audit, also report what is **absent** as `missing_control` findings: tokens kept outside the platform keystore; no certificate validation policy; exported components or deep links without verification; debug flags or verbose logging in release builds; no root/jailbreak or tamper response where the threat model needs one; personal data collected without a stated purpose. The backend the app calls is audited with the `web` axes when it is in scope.
+
 ## What is not proof
 Reading the code is `REVIEWED_STATIC`. A finding is `confirmed` only with a reproduction (a failing test, a command and its output, or a request/response against the local backend).

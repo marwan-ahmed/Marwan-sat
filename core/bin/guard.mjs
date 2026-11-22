@@ -8,7 +8,7 @@
 //   - Writes only to the files allowed in the current phase (and allowed_write in IMPLEMENT/FIX).
 //   - SAT-managed, generated and tool-owned files are never written by agents.
 //   - Reviewers do not read the implementer's notes (clean context).
-//   - Dangerous shell commands; network targets outside localhost during REVIEW;
+//   - Dangerous shell commands; network targets outside localhost during REVIEW and the audit's FINDINGS/CHALLENGE;
 //     gate approvals by agents when gates.approval = owner.
 // Limitation (documented): a shell command can still write files. verify.mjs and CI catch that.
 import { existsSync, readFileSync } from 'node:fs';
@@ -81,10 +81,10 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
     for (const [rx, why] of DANGEROUS) if (rx.test(cmd)) return { decision: 'deny', reason: why };
     if (cfg.gates.approval === 'owner' && /phase(\.mjs)?\s+(approve|resume)\b/.test(cmd))
       return { decision: 'deny', reason: 'Gate approvals and task resumes are run by the owner personally (gates.approval = owner)' };
-    if (phase === 'REVIEW') {
+    if (['REVIEW', 'FINDINGS', 'CHALLENGE'].includes(phase)) {
       const hosts = [...cmd.matchAll(/\bhttps?:\/\/([^/\s:'"]+)/gi)].map((m) => m[1].toLowerCase());
       const external = hosts.filter((h) => !['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]'].includes(h));
-      if (external.length) return { decision: 'deny', reason: `During review only localhost targets are allowed (rules of engagement): ${external.join(', ')}` };
+      if (external.length) return { decision: 'deny', reason: `During ${phase === 'REVIEW' ? 'review' : 'an audit'} only localhost targets are allowed (rules of engagement): ${external.join(', ')}` };
     }
     return { decision: 'allow' };
   }

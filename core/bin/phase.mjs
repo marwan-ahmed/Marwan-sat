@@ -2,23 +2,26 @@
 // Marwan SAT — phase: the task state machine (charter §5, §6, §7).
 //
 //   node .team/bin/phase.mjs new "<title>" [--path full|light]
+//   node .team/bin/phase.mjs new "<title>" --kind audit          # discover work: findings → backlog (charter §5.5)
+//   node .team/bin/phase.mjs new --from TASK-<n>:B-<m>            # open a task from an approved audit backlog
 //   node .team/bin/phase.mjs status [--json]
 //   node .team/bin/phase.mjs next
-//   node .team/bin/phase.mjs approve <GATE_0|GATE_1|GATE_2> --decision <approve|changes|cancel> [--to <PHASE>] --note "<owner's words>"
+//   node .team/bin/phase.mjs approve <GATE_0|GATE_1|GATE_2|GATE_A> --decision <approve|changes|cancel> [--to <PHASE>] --note "<owner's words>"
 //   node .team/bin/phase.mjs goto DESIGN --reason "<CHANGE_REQUEST-n>"
 //   node .team/bin/phase.mjs escalate "<reason>"
 //   node .team/bin/phase.mjs resume --to <PHASE> --note "<owner decision>"
 //   node .team/bin/phase.mjs cancel --note "<reason>"
 //
 // Only this tool changes the phase. Agents cannot write STATE.json or task.json (guard.mjs).
-import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findRoot, loadProject } from './lib/config.mjs';
+import { auditScopeErrors, checkAudit, FROM_MARKER } from './lib/audit.mjs';
 import { checkSpecTrace, extractIds, isBlocking, latestNumbered, readExecPrompt, readJSONFile, readText, validateAudit, validateReview, validateTasks } from './lib/contracts.mjs';
 import { currentBranch, git, headSha, isGitRepo, porcelainFiles } from './lib/git.mjs';
 import { matchAny } from './lib/glob.mjs';
 import { reportHash, tmSectionFilled } from './lib/report-hash.mjs';
-import { activeTask, appendLedger, GATES, nextTaskId, readState, taskDir, taskRel, TERMINAL, writeState, writeTask } from './lib/state.mjs';
+import { activeTask, appendLedger, AUDIT_PHASES, GATES, listTasks, nextTaskId, readJSON, readState, taskDir, taskRel, TERMINAL, writeState, writeTask } from './lib/state.mjs';
 import { parseFrontmatter } from './lib/yaml.mjs';
 
 const NEXT_ACTOR = {
@@ -35,6 +38,11 @@ const NEXT_ACTOR = {
   REPORT: 'Run report.mjs, write only the risk assessment section, push the branch and open a PR, then phase next.',
   GATE_2: 'Gate 2: show REPORT.md and the PR link to the owner. Only the owner merges.',
   ESCALATED: 'The task is paused. Present the escalation to the owner in the charter §7.6 format, then resume with their decision.',
+  INVENTORY: 'Run node .team/bin/verify.mjs once (scanner evidence), then call marwan-sat-architect (inventory mode) to write INVENTORY.json, then phase next.',
+  FINDINGS: 'Call marwan-sat-security-auditor, marwan-sat-adversarial-reviewer and marwan-sat-architect (audit mode) in parallel; each writes only its own findings file. Then phase next.',
+  CHALLENGE: 'Call marwan-sat-adversarial-reviewer (challenges security.json and gaps.json) and marwan-sat-security-auditor (challenges logic-money.json) in parallel. Then phase next.',
+  BACKLOG: 'Run node .team/bin/backlog.mjs and write only the tech-manager section of BACKLOG.md, then phase next.',
+  GATE_A: 'Commit the task folder only, push the branch and open a PR. Then Gate A: show BACKLOG.md and the PR link to the owner. The owner merges; record the decision with approve GATE_A.',
   CLOSED: 'The task is closed.',
   CANCELLED: 'The task is cancelled.',
 };
@@ -84,11 +92,46 @@ function effectiveLimit(cfg, task, key) {
   return cfg.limits[key] + ((task.granted && task.granted[key]) || 0);
 }
 
+// "TASK-002:B-03" → the backlog item of a merged audit, its draft request and its dependencies.
+function loadBacklogItem(root, ref) {
+  const m = /^(TASK-\d+):(B-\d+)$/.exec(String(ref || ''));
+  if (!m) fail('--from needs an audit task and a backlog item, e.g. --from TASK-002:B-03');
+  const [, auditId, itemId] = m;
+  const dir = taskDir(root, auditId);
+  const audit = readJSON(join(dir, 'task.json'), null);
+  if (!audit || audit.kind !== 'audit') fail(`${auditId} is not an audit task on this branch. Merge the audit PR, then: git checkout <base branch> and git pull.`);
+  const { value: backlog, error } = readJSONFile(join(dir, 'BACKLOG.json'));
+  if (error) fail(`${auditId} has no BACKLOG.json on this branch: merge the audit PR first (${error})`);
+  const item = (backlog.items || []).find((x) => x.id === itemId);
+  if (!item) fail(`${auditId} has no backlog item ${itemId}. Items: ${(backlog.items || []).map((x) => x.id).join(', ')}`);
+  const request = readText(join(dir, 'requests', `${itemId}.md`));
+  if (!request || !request.includes(FROM_MARKER(auditId, itemId))) fail(`requests/${itemId}.md of ${auditId} is missing or was edited by hand: rerun backlog.mjs in the audit.`);
+  return { auditId, item, request };
+}
+
+// Items already delivered: a task opened from the item whose files reached this (base) branch through a merged
+// PR. A PR carries the task at GATE_2 (it is committed after the report), or CLOSED if committed later.
+function doneFromBacklog(root, auditId) {
+  const done = new Set();
+  for (const id of listTasks(root)) {
+    const t = readJSON(join(taskDir(root, id), 'task.json'), null);
+    if (t && t.source && t.source.audit === auditId && ['GATE_2', 'CLOSED'].includes(t.phase)) done.add(t.source.item);
+  }
+  if (existsSync(join(root, 'AGENTS.md'))) done.add('__agents_md__');
+  return done;
+}
+
 function cmdNew(root, cfg, pos, opts) {
-  const title = pos[0];
+  const kind = opts.kind || 'change';
+  if (!['change', 'audit'].includes(kind)) fail('--kind must be change or audit');
+  if (opts.from && kind === 'audit') fail('--from opens a change task from a backlog item; it cannot be combined with --kind audit');
+  const from = opts.from ? loadBacklogItem(root, opts.from) : null;
+  const title = pos[0] || (from && from.item.title);
   if (!title) fail('A title is required: phase new "<title>"');
-  const path = opts.path || 'full';
-  if (!['full', 'light'].includes(path)) fail('--path must be full or light');
+  if (kind === 'audit' && opts.path) fail('An audit task has no path: it changes no code. Drop --path.');
+  const path = kind === 'audit' ? null : opts.path || (from ? from.item.path : 'full');
+  if (kind !== 'audit' && !['full', 'light'].includes(path)) fail('--path must be full or light');
+  if (from && from.item.path === 'full' && path === 'light') fail(`${from.item.id} needs the full path (${from.item.path_reason || 'sensitive'}): a backlog item cannot be downgraded to light.`);
   const st = readState(root);
   if (st && st.active_task) fail(`Task ${st.active_task} is still active. Close or cancel it first.`);
   if (!isGitRepo(root)) fail('The project is not a git repository.');
@@ -108,7 +151,9 @@ function cmdNew(root, cfg, pos, opts) {
   const task = {
     id,
     title,
+    kind,
     path,
+    source: from ? { audit: from.auditId, item: from.item.id } : null,
     branch,
     base_ref: baseRef,
     base_sha: sha,
@@ -127,8 +172,20 @@ function cmdNew(root, cfg, pos, opts) {
   };
   writeTask(root, task);
   writeState(root, { active_task: id, phase: 'INTAKE' });
-  appendLedger(root, { type: 'task_created', task: id, title, path, branch, base_ref: baseRef, base_sha: sha });
-  console.log(`[SAT] Created task ${id} (${path === 'full' ? 'full path' : 'light path'}) on branch ${branch}`);
+  appendLedger(root, { type: 'task_created', task: id, title, kind, path, branch, base_ref: baseRef, base_sha: sha, ...(from ? { from: `${from.auditId}:${from.item.id}` } : {}) });
+  const label = kind === 'audit' ? 'audit' : path === 'full' ? 'full path' : 'light path';
+  console.log(`[SAT] Created task ${id} (${label}) on branch ${branch}`);
+  if (from) {
+    // The owner approved this request at Gate A of the audit; it is copied verbatim, like any request.
+    writeFileSync(join(taskDir(root, id), 'REQUEST.md'), from.request, 'utf8');
+    console.log(`[SAT] REQUEST.md copied from ${from.auditId} requests/${from.item.id}.md (priority ${from.item.priority}).`);
+    const done = doneFromBacklog(root, from.auditId);
+    for (const d of from.item.depends_on || []) if (!done.has(d.item) && !(d.type === 'governance' && done.has('__agents_md__'))) console.log(`[SAT] ! ${from.item.id} depends on ${d.item} (${d.type}: ${d.reason}), which has not been delivered on this branch yet.`);
+    for (const c of from.item.conflicts_with || []) console.log(`[SAT] ! ${from.item.id} conflicts with ${c.item}: ${c.note}`);
+    if ((from.item.confirm_first || []).length) console.log(`[SAT] ! Confirm first: ${from.item.confirm_first.map((c) => c.id).join(', ')} (see REQUEST.md).`);
+    console.log('[SAT] Next: REQUEST.md is ready — run phase next.');
+    return;
+  }
   console.log(`[SAT] Next: ${NEXT_ACTOR.INTAKE}`);
 }
 
@@ -139,7 +196,9 @@ function cmdStatus(root, cfg, opts) {
     ? {
         active_task: task.id,
         title: task.title,
+        kind: task.kind || 'change',
         path: task.path,
+        source: task.source || null,
         phase: task.phase,
         branch: task.branch,
         base_sha: task.base_sha,
@@ -190,7 +249,27 @@ function cmdNext(root, cfg) {
     case 'INTAKE': {
       const req = readText(join(dir, 'REQUEST.md'));
       if (!req || req.trim().length < 3) fail('REQUEST.md is empty or missing.');
-      return transition(root, task, 'INTERPRET');
+      return transition(root, task, task.kind === 'audit' ? 'INVENTORY' : 'INTERPRET');
+    }
+    case 'INVENTORY':
+    case 'FINDINGS':
+    case 'CHALLENGE': {
+      const scope = auditScopeErrors(root, task, cfg);
+      if (scope.length) fail(scope.join('\n'));
+      const stage = task.phase.toLowerCase();
+      const { errors } = checkAudit(root, cfg, task, stage);
+      if (errors.length) fail(`${task.phase} is not complete:\n- ${errors.join('\n- ')}`);
+      return transition(root, task, { INVENTORY: 'FINDINGS', FINDINGS: 'CHALLENGE', CHALLENGE: 'BACKLOG' }[task.phase]);
+    }
+    case 'BACKLOG': {
+      const scope = auditScopeErrors(root, task, cfg);
+      if (scope.length) fail(scope.join('\n'));
+      const md = readText(join(dir, 'BACKLOG.md'));
+      if (!md || !existsSync(join(dir, 'BACKLOG.json'))) fail('BACKLOG.md or BACKLOG.json is missing. Run backlog.mjs.');
+      if (!task.backlog_hash || reportHash(md) !== task.backlog_hash)
+        fail('The generated sections of BACKLOG.md were edited by hand or not generated yet. Rerun backlog.mjs and edit only the tech-manager section.');
+      if (!tmSectionFilled(md)) fail('The tech-manager section of BACKLOG.md is not written yet.');
+      return transition(root, task, 'GATE_A');
     }
     case 'INTERPRET': {
       const ep = readExecPrompt(dir);
@@ -301,7 +380,7 @@ function cmdNext(root, cfg) {
 function cmdApprove(root, cfg, pos, opts) {
   const task = requireActive(root);
   const gate = pos[0];
-  if (!GATES.includes(gate)) fail('approve needs a gate: GATE_0, GATE_1 or GATE_2');
+  if (!GATES.includes(gate)) fail('approve needs a gate: GATE_0, GATE_1, GATE_2 or GATE_A');
   if (task.phase !== gate) fail(`The task is in ${task.phase}, not ${gate}.`);
   const decision = opts.decision || 'approve';
   if (!['approve', 'changes', 'cancel'].includes(decision)) fail('--decision: approve | changes | cancel');
@@ -310,6 +389,14 @@ function cmdApprove(root, cfg, pos, opts) {
   const dir = taskDir(root, task.id);
   task.gates[gate] = [...(task.gates[gate] || []), { decision, note, at: new Date().toISOString(), mode: cfg.gates.approval }];
   if (decision === 'cancel') return transition(root, task, 'CANCELLED', { gate, note });
+  if (gate === 'GATE_A') {
+    if (decision === 'changes') {
+      const to = opts.to || 'FINDINGS';
+      if (!['INVENTORY', 'FINDINGS', 'CHALLENGE'].includes(to)) fail('--to must be INVENTORY, FINDINGS or CHALLENGE');
+      return transition(root, task, to, { gate, note });
+    }
+    return transition(root, task, 'CLOSED', { gate, note });
+  }
   if (gate === 'GATE_0') {
     if (decision !== 'approve') fail('Gate 0 accepts only approve or cancel.');
     const ans = readText(join(dir, 'ANSWERS.md'));
@@ -351,7 +438,7 @@ function cmdResume(root, cfg, opts) {
   const task = requireActive(root);
   if (task.phase !== 'ESCALATED') fail('resume works only from ESCALATED.');
   const to = opts.to;
-  const allowed = ['INTERPRET', 'DESIGN', 'TESTS', 'IMPLEMENT', 'FIX', 'REVIEW', 'REPORT'];
+  const allowed = task.kind === 'audit' ? AUDIT_PHASES.filter((p) => p !== 'GATE_A') : ['INTERPRET', 'DESIGN', 'TESTS', 'IMPLEMENT', 'FIX', 'REVIEW', 'REPORT'];
   if (!allowed.includes(to)) fail(`--to must be one of: ${allowed.join(', ')}`);
   const note = typeof opts.note === 'string' ? opts.note.trim() : '';
   if (note.length < 2) fail('--note is required: the owner\'s decision verbatim.');

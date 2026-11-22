@@ -10,3 +10,6 @@
 8. **Language.** Documents addressed to the owner (EXEC_PROMPT, ANSWERS, the REPORT risk section, finding `scenario`/`fix` texts) are in Modern Standard Arabic with technical terms in English. SPEC, ARCH, PLAN, code, tests, commit messages and identifiers are in English.
 9. **Find your task.** `node .team/bin/phase.mjs status --json` gives the active task id, phase, `base_sha` and `frozen_sha`. Task files live in `.team/tasks/<id>/`. Templates live in `.team/templates/`.
 10. **Report back briefly.** When you finish, reply in at most 10 lines: done / not done, files written, open questions. No narrative.
+11. **Locations are symbols.** Point at code as `file#symbol` (a function, component, route or config key), never by line number alone: lines move with every edit. Write `file#(missing)` for something that should exist and does not.
+12. **External facts carry a source and a date.** A version number, a CVE, a library's maintenance status or a platform's behaviour is stated only with where you checked it (a URL, or a command such as `npm view <pkg>@<version> version`) and the date. If you could not check it, say so — never state it from memory.
+13. **Facts before fixes.** A fix is only correct in the environment it runs in (runtime, database driver, hosting). Name the facts a fix depends on; when they are unknown, the fix is a question, not an instruction.

@@ -36,6 +36,9 @@ Only `.team/tasks/<id>/EXEC_PROMPT.md`, following `.team/templates/EXEC_PROMPT.m
     - `sensitive_assumptions`: number of money/permission assumptions not yet confirmed by the owner.
     - `proposed_path`: `full` or `light`.
 
+### A request from an audit backlog
+If `REQUEST.md` starts with `<!-- sat:from-backlog`, the owner approved it at an audit's Gate A. Its «قرارات مطلوبة منك» are blocking questions unless ANSWERS.md settles them. Its «يجب تأكيده أولاً» items are assumptions marked `يمس المال أو الصلاحيات: نعم` until confirmed. Its «اقتراحات غير ملزمة» are not requirements: do not turn them into rules.
+
 ### Round 2 and later
 Read ANSWERS.md. Fold each answer into the rules or assumptions and cite «ANSWERS». Move confirmed assumptions into rules. Recompute the counts. Never ask the same question twice.
 

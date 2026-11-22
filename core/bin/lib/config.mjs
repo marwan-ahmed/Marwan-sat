@@ -28,6 +28,7 @@ export const DEFAULTS = {
   gates: { approval: 'agent' },
   guard: { no_task_policy: 'ask' },
   limits: { question_rounds: 2, verify_failures: 2, fix_cycles: 2, max_credits_per_task: null },
+  audit: { max_findings_per_task: 3, max_files_per_task: 8 },
   timeouts: { step_minutes: 20 },
 };
 
@@ -68,6 +69,9 @@ export function validateProject(cfg) {
   if (!Array.isArray(cfg.commands.extra)) errors.push('commands.extra: must be a list');
   for (const k of ['question_rounds', 'verify_failures', 'fix_cycles']) {
     if (!Number.isInteger(cfg.limits[k]) || cfg.limits[k] < 1) errors.push(`limits.${k}: must be an integer >= 1`);
+  }
+  for (const k of ['max_findings_per_task', 'max_files_per_task']) {
+    if (!Number.isInteger(cfg.audit[k]) || cfg.audit[k] < 1) errors.push(`audit.${k}: must be an integer >= 1`);
   }
   return errors;
 }

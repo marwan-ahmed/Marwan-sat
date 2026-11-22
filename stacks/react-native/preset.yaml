@@ -51,5 +51,9 @@ limits:
   fix_cycles: 2
   max_credits_per_task: null
 
+audit:                        # مهام التدقيق (الميثاق §5.5 و§7.8): حدود حجم البند في قائمة المهام
+  max_findings_per_task: 3
+  max_files_per_task: 8
+
 timeouts:
   step_minutes: 20
