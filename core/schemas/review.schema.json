@@ -31,6 +31,7 @@
           "scenario": { "type": "string" },
           "evidence": { "type": "string" },
           "fix": { "type": "string" },
+          "plain": { "type": "string", "description": "One sentence for the owner, without jargon (required for critical/high/medium when owner.audience is simple)" },
           "trace": { "type": "array", "items": { "type": "string" } }
         },
         "if": { "properties": { "proof": { "const": "confirmed" } } },

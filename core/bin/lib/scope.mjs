@@ -14,6 +14,8 @@ export const FIXED_PROTECTED = [
   '.team/tasks/*/evidence/**',
   '.team/tasks/*/REVIEW.c*.json',
   '.team/tasks/*/SECURITY_AUDIT.c*.json',
+  '.team/tasks/*/BACKLOG.json',
+  '.team/tasks/*/requests/**',
   '.team/evidence/**',
   '.git/**',
 ];
@@ -76,6 +78,15 @@ export function phaseWritable(phase, task, cfg, tasksJson) {
       return [`${T}/REPORT.md`];
     case 'GATE_2':
       return ['.team/DECISIONS.md'];
+    // Audit tasks: each lens and each challenger owns one file; proofs are scripts and their output.
+    case 'INVENTORY':
+      return [`${T}/INVENTORY.json`];
+    case 'FINDINGS':
+      return [`${T}/findings/security.json`, `${T}/findings/logic-money.json`, `${T}/findings/gaps.json`, `${T}/proofs/**`];
+    case 'CHALLENGE':
+      return [`${T}/challenge/by-reviewer.json`, `${T}/challenge/by-auditor.json`, `${T}/proofs/**`];
+    case 'BACKLOG':
+      return [`${T}/BACKLOG.md`];
     default:
       return [];
   }

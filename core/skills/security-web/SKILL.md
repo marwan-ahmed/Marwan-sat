@@ -41,6 +41,17 @@ References: OWASP Top 10:2025 · OWASP ASVS 5.0 · OWASP API Security Top 10. Us
 - Security headers (CSP, HSTS, X-Content-Type-Options, frame-ancestors). Debug modes off.
 - Dependency vulnerabilities from the scanner output (OWASP A03:2025 — software supply chain failures).
 
+## Project audit — controls that should exist (audit task, findings/security.json)
+In a project audit, look for what is **absent**, not only for what is wrong. Each missing control is a `missing_control` finding:
+- **Server-side authorization on every server action and route handler.** A layout, a middleware/proxy redirect or a hidden button is not a boundary: the action itself checks the session and the role (Next.js guidance: keep checks close to the data, in a data access layer).
+- **Rate limiting** on login, OTP, registration, password reset, payment initiation, contact forms and any endpoint that sends mail or SMS. In serverless hosting an in-memory counter is not shared between instances.
+- **Payment callbacks:** signature verified with a pinned algorithm; the order id validated; the transaction must be `pending` and belong to the same provider; amount, currency and status re-checked server-to-server with the provider; the provider's transaction id unique in the database (replay); a reconciliation path for callbacks that never arrive.
+- **Security headers:** CSP (nonce-based CSP forces dynamic rendering — say so when static pages matter; start with `Content-Security-Policy-Report-Only`), HSTS, X-Content-Type-Options, frame-ancestors, Referrer-Policy, Permissions-Policy.
+- **Stored URLs** (avatars, thumbnails, video links, social links): only `https:` (or an allow-list of hosts); never `javascript:` or `data:` in an `href` or `src`.
+- **Account enumeration:** login and reset responses do not reveal whether an account exists or is blocked before the password is verified.
+- **Password change:** requires the current password and revokes the other sessions.
+- **Dependencies:** for each vulnerable package, where it is used and whether the vulnerable function is reachable; framework advisories checked at the source, not only through the audit tool.
+
 ## What is not proof
 - "The code looks like it checks permissions" → `REVIEWED_STATIC`, not `TESTED_DYNAMIC`.
 - A scanner warning you did not verify → triage it; it is not a confirmed finding by itself.

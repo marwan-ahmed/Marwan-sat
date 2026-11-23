@@ -4,7 +4,7 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { advisoriesFromJson, auditLevel, changedManifests, looksLikeFindings, scopeScannerCommand } from '../core/bin/lib/scan.mjs';
-import { execPrompt, git, makeProject, phase, read, T, task, verify, write } from './helpers.mjs';
+import { execPrompt, git, makeProject, phase, read, T, task, verify, write, approvePlanAndStart } from './helpers.mjs';
 
 const BASE = '0123456789abcdef0123456789abcdef01234567';
 
@@ -80,6 +80,8 @@ function lightTask(root, allowed = ['src/a.mjs']) {
   write(root, `${T}/EXEC_PROMPT.md`, execPrompt({ path: 'light' }));
   write(root, `${T}/TASKS.json`, JSON.stringify({ task_id: 'TASK-001', path: 'light', items: [{ id: 'T1', title: 't', acceptance: [], allowed_write: allowed }] }));
   assert.equal(phase(root, 'next').code, 0);
+  assert.equal(task(root).phase, 'GATE_1');
+  approvePlanAndStart(root);
   assert.equal(task(root).phase, 'IMPLEMENT');
 }
 

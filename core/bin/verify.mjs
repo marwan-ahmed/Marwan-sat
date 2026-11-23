@@ -70,7 +70,10 @@ function main() {
 
   // The commit this change is measured from (charter §9.6): in CI the merge base with the PR's base branch;
   // locally the task's base (or the merge base with the base branch once it was merged into the task branch).
-  const scanScope = cfg.security.scan_scope;
+  // An audit is about the debt already in the repository: its scanners look at everything, and what they
+  // report is input for the security lens to triage (charter §5.5), not a reason for the run to fail.
+  const isAudit = Boolean(task && task.kind === 'audit');
+  const scanScope = isAudit ? 'full' : cfg.security.scan_scope;
   const base = ciInfo ? ciInfo.mergeBaseSha : effectiveBase(root, cfg.git.base_branch, task && task.base_sha);
   const changedFromBase = base ? changedSince(base, root).filter((f) => !isToolFile(f)) : [];
   const runDir = typeof opts.out === 'string' ? join(root, opts.out) : task ? join(taskDir(root, task.id), 'evidence', `${stamp()}-${(sha || 'nosha').slice(0, 7)}`) : join(root, '.team', 'evidence', `${stamp()}-${(sha || 'nosha').slice(0, 7)}`);
@@ -79,6 +82,7 @@ function main() {
   const summary = {
     tool: 'marwan-sat/verify',
     task: task ? task.id : null,
+    kind: task ? task.kind || 'change' : null,
     phase: task ? task.phase : null,
     sha,
     dirty: dirtyFiles.length > 0,
@@ -127,6 +131,11 @@ function main() {
     const r = runShell(cmd, { cwd: root, timeoutMs });
     const log = writeLog(name, cmd, r);
     const step = { name, kind, command: cmd, ...scope, status: r.exitCode === 0 ? 'pass' : 'fail', exit_code: r.exitCode, duration_ms: r.durationMs, log };
+    if (isAudit && kind === 'scanner' && r.exitCode !== 0) {
+      step.status = 'warn';
+      step.audit_input = true;
+      step.reason = 'audit input: triage it in findings/security.json (scanner_triage)';
+    }
     if (diffScope && name === 'dependencies' && r.exitCode !== 0) {
       const j = judgeDependencies({ root, base, command, changed: changedFromBase, primary: r, timeoutMs, logDir: runDir });
       step.status = j.status;
@@ -147,6 +156,7 @@ function main() {
   runStep('sast', cfg.security.scanners.sast, 'scanner');
   runStep('dependencies', cfg.security.scanners.dependencies, 'scanner');
   for (const s of summary.steps.filter((x) => x.status === 'warn')) console.log(`[SAT]   ${s.name}: ${s.reason}`);
+  if (isAudit) console.log('[SAT]   audit task: scanners checked the whole repository; their findings are inputs, not failures.');
   for (const s of summary.steps.filter((x) => x.kind === 'scanner' && x.status === 'fail' && x.reason)) console.log(`[SAT]   ${s.name}: ${s.reason}`);
 
   const check = (name, ok, details) => {
@@ -165,7 +175,13 @@ function main() {
   } else check('managed_files', false, 'sat.lock is missing');
 
   // 4) Task-scoped integrity.
-  if (task) {
+  if (task && isAudit) {
+    // An audit reads the project; it writes only its own task folder (charter §5.5).
+    const T = taskRel(task.id);
+    const sinceBase = changedSince(base || task.base_sha, root).filter((f) => !isToolFile(f));
+    const outside = sinceBase.filter((f) => !f.startsWith(`${T}/`));
+    check('audit_read_only', outside.length === 0, outside.length ? outside : `only ${T}/ changed`);
+  } else if (task) {
     const T = taskRel(task.id);
     // What this task changed: since the test freeze (if any), minus whatever came in from the base branch.
     const taskBase = base || task.base_sha;

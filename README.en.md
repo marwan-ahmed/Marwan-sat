@@ -2,13 +2,18 @@
 
 **A governed seven-agent software team with deterministic gates, installable in any project.**
 
-> Version `0.3.0` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
+> Version `0.4.0` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
 
 Marwan SAT is not "a smarter agent". It is **governance around agents**: who writes what, when, with what evidence, and who decides.
 
 - **An agent's statement about its own work is not evidence.** Tool output, Git history and CI are.
 - **One code writer.** The other agents analyse, review and attack; they do not write code.
-- **The owner decides.** Two fixed gates and one conditional gate; only the owner merges, through GitHub.
+- **The owner decides, and preparation is kept apart from execution.**
+  - Nothing in the project changes until the owner sends two separate, exact replies: «اعتمد الخطة» (approve the plan), then «ابدأ التنفيذ» (start).
+  - The tool checks the wording.
+  - Only the owner merges, through GitHub.
+  - Every message to the owner starts with a stage line (preparation or execution) and keeps technical detail in a final section.
+  - `owner.audience: simple|developer` sets the vocabulary.
 
 ## The team
 
@@ -46,15 +51,26 @@ SAT is installed into each project separately (a git repo with at least one comm
 
 ```bash
 cd /path/to/your-project
-npx github:marwan-ahmed/marwan-sat#v0.3.0 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
-npx github:marwan-ahmed/marwan-sat#v0.3.0 doctor
+npx github:marwan-ahmed/marwan-sat#v0.4.0 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
+npx github:marwan-ahmed/marwan-sat#v0.4.0 doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.3.0"
+git commit -m "chore: install Marwan SAT 0.4.0"
 ```
 
-`#v0.3.0` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
+`#v0.4.0` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
 
 **Upgrading from 0.1.x to 0.2.0:** agent names now start with `marwan-sat-` (for example `marwan-sat-tech-manager`). Finish any active task first, then run `update`: it removes the old agent files. Then pick `marwan-sat-tech-manager` again in Antigravity.
+
+**Upgrading to 0.4.0:**
+- **What it adds:**
+  - The audit path (charter §5.5).
+  - A start-permission gate, separate from the plan approval.
+  - Exact reply phrases for approvals (§6).
+- **What it changes:**
+  - A task in progress is not broken. A task at Gate 1 moves to the start gate once the plan is approved.
+  - A light task touching a `payout`, `withdraw` or `refund` file now needs the full path.
+  - The default audience is `simple`. Developers can set `owner.audience: developer`, then run `sat regenerate`.
+- **After updating:** start a new conversation with the tech manager.
 
 **Upgrading to 0.3.0:** scanners now judge only the task's change, so a task no longer fails on vulnerabilities, secrets or findings that were in the project before it; that debt is reported instead. You can update with a task in progress: update on the main branch, then merge it into the task branch. See the CHANGELOG and charter §9.6.
 
@@ -84,14 +100,28 @@ There is no terminal command to start a task: the tech manager opens it, records
 New task: <describe what you need, as you would to a human tech lead>
 ```
 
-Requirements: a clean working tree and no other active task (one task at a time). The tech manager comes back to you only at Gate 0 (≤ 3 blocking questions, if any), Gate 1 (design approval, before any code) and Gate 2 (report and PR; you merge). Check progress any time with `node .team/bin/phase.mjs status`.
+Requirements: a clean working tree and no other active task (one task at a time). The tech manager comes back to you only at these points:
+- **Gate 0:** up to 3 blocking questions, if any.
+- **Gate 1:** plan approval. Reply «اعتمد الخطة».
+- **The start permission:** a separate message. Reply «ابدأ التنفيذ». Until then nothing in the project changes.
+- **Gate 2:** report and PR. Reply «اعتمد النتيجة», then merge it yourself. Check progress any time with `node .team/bin/phase.mjs status`.
+
+**Auditing an existing project.** Ask the tech manager for an audit (`Audit: <scope>`). It never answers with a free-form list. It opens an **audit task** (`phase new "<title>" --kind audit`), which changes nothing outside its folder:
+- **INVENTORY:** evidence-backed environment facts, and every entry point with its server-side check.
+- **FINDINGS:** three parallel lenses: security, logic and money, and gaps. Every finding has a proof status and a `file#symbol` location.
+- **CHALLENGE:** every finding is reviewed by a role that did not write it. It checks reachability, whether the fix is right in this environment, the severity, and any external claims.
+- **BACKLOG:** `backlog.mjs` builds small, ordered items from a fixed priority table. Each item has a ready request, with fixes kept apart as non-binding hints.
+
+You approve the backlog at Gate A («اعتمد القائمة») and merge it. Approving the list starts nothing. Each item is then prepared on request with `phase new --from TASK-<n>:B-<m>`, and passes its own plan and start gates. See charter §5.5 and §7.8.
 
 After each merge, run `git checkout main` then `git pull` before the next task. A step-by-step beginner guide (Arabic) is in [docs/ANTIGRAVITY_GUIDE.md](docs/ANTIGRAVITY_GUIDE.md).
 
 ## Honest limits
 
 - `guard` is the first line of defence; a shell command can still write files. `verify` and CI are the last line.
-- Gates 0 and 1 are procedural in the default `agent` approval mode; set `gates.approval: owner` to enforce them.
+- In the default `agent` mode, the tech manager records your reply. The tool checks the wording but cannot prove who wrote it. Set `gates.approval: owner` to run approvals yourself.
+- Plain language is an instruction to the agents. The tool enforces the structure: the stage line, the exact phrases, the technical section, and a plain sentence per finding.
+- An audit is only as good as what it examined: its backlog lists what was not examined, and suspected findings stay suspected until a task confirms them.
 - The security auditor is not a guarantee against attacks. Without an attack environment its verdict is `INCOMPLETE`; mobile apps are reviewed statically in this version.
 - Antigravity tool names come from its documentation; open each generated agent once to confirm.
 

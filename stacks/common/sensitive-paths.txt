@@ -20,6 +20,12 @@
 **/*balance*/**
 **/*billing*
 **/*billing*/**
+**/*payout*
+**/*payout*/**
+**/*withdraw*
+**/*withdraw*/**
+**/*refund*
+**/*refund*/**
 
 # المصادقة والصلاحيات (ملفات ومجلدات: auth.ts و lib/auth.ts و auth.config.ts لا تقل حساسية عن مجلد auth/)
 **/auth/**

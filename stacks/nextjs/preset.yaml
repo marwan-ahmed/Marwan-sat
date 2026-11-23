@@ -39,8 +39,16 @@ security:
     sast: semgrep scan --config p/default --error --metrics=off --quiet
     dependencies: {{pm_audit}}
 
+owner:
+  audience: {{audience}}       # simple: صاحب الطلب لا يبرمج، فيخاطبه الفريق بلغة مبسطة · developer: صاحب الطلب مطوّر
+
 gates:
   approval: agent             # agent: يسجّل المدير التقني موافقتك الصريحة · owner: تشغّل أمر الموافقة بنفسك
+  phrases:                    # الردود الحرفية التي تعتمد البوابات، وتتحقق منها الأداة (الميثاق §6.2)
+    plan: "اعتمد الخطة"
+    start: "ابدأ التنفيذ"
+    result: "اعتمد النتيجة"
+    backlog: "اعتمد القائمة"
 
 guard:
   no_task_policy: ask         # ask | allow | deny — الكتابة دون مهمة SAT نشطة
@@ -50,6 +58,10 @@ limits:
   verify_failures: 2
   fix_cycles: 2
   max_credits_per_task: null
+
+audit:                        # مهام التدقيق (الميثاق §5.5 و§7.8): حدود حجم البند في قائمة المهام
+  max_findings_per_task: 3
+  max_files_per_task: 8
 
 timeouts:
   step_minutes: 20
