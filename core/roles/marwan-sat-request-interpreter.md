@@ -36,6 +36,9 @@ Only `.team/tasks/<id>/EXEC_PROMPT.md`, following `.team/templates/EXEC_PROMPT.m
     - `sensitive_assumptions`: number of money/permission assumptions not yet confirmed by the owner.
     - `proposed_path`: `full` or `light`.
 
+### Questions the owner can answer
+Your blocking questions and sensitive assumptions are shown to the owner word for word at Gate 0, and the owner may not program (common rule 14). Write each one so it can be answered without seeing the code: everyday words, one decision per question, and the options as concrete cases from the owner's world (for example «إذا تأخر العميل يوماً واحداً: هل يُحسب متأخراً؟ (أ) نعم (ب) بعد 3 أيام سماح»). Put ids and technical detail after the question, in parentheses.
+
 ### A request from an audit backlog
 If `REQUEST.md` starts with `<!-- sat:from-backlog`, the owner approved it at an audit's Gate A. Its «قرارات مطلوبة منك» are blocking questions unless ANSWERS.md settles them. Its «يجب تأكيده أولاً» items are assumptions marked `يمس المال أو الصلاحيات: نعم` until confirmed. Its «اقتراحات غير ملزمة» are not requirements: do not turn them into rules.
 

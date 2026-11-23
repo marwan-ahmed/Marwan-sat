@@ -3,12 +3,13 @@ import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, write
 import { dirname, join } from 'node:path';
 
 export const PHASES = [
-  'INTAKE', 'INTERPRET', 'GATE_0', 'DESIGN', 'THREAT', 'GATE_1', 'TESTS',
+  'INTAKE', 'INTERPRET', 'GATE_0', 'DESIGN', 'THREAT', 'GATE_1', 'GATE_START', 'TESTS',
   'IMPLEMENT', 'REVIEW', 'FIX', 'REPORT', 'GATE_2', 'CLOSED', 'ESCALATED', 'CANCELLED',
   // Audit tasks (charter §5.5): discover and prioritise work; change nothing outside the task folder.
   'INVENTORY', 'FINDINGS', 'CHALLENGE', 'BACKLOG', 'GATE_A',
 ];
-export const GATES = ['GATE_0', 'GATE_1', 'GATE_2', 'GATE_A'];
+// GATE_1 approves the plan; GATE_START is the separate permission to start changing the project (charter §6).
+export const GATES = ['GATE_0', 'GATE_1', 'GATE_START', 'GATE_2', 'GATE_A'];
 export const AUDIT_PHASES = ['INVENTORY', 'FINDINGS', 'CHALLENGE', 'BACKLOG', 'GATE_A'];
 export const TERMINAL = ['CLOSED', 'CANCELLED'];
 

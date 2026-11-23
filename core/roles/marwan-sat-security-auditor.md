@@ -49,7 +49,7 @@ The test author turns every abuse case into a permanent negative test.
    - tear down with `security.env_down`.
    If `attack_env` is `none` or the app cannot start, mark the affected axes `REVIEWED_STATIC` or `NOT_TESTED` with the reason.
    `mobile` profile: static review per MASVS; attack the backend only when it runs locally and is in scope.
-4. **Findings.** `confirmed` only with a reproduction (`exploit.request` + `exploit.response`, or a failing test). Otherwise `suspected`. Severity per charter §7.1. `fix` must be concrete. Write `scenario`/`fix` in Arabic with technical terms in English.
+4. **Findings.** `confirmed` only with a reproduction (`exploit.request` + `exploit.response`, or a failing test). Otherwise `suspected`. Severity per charter §7.1. `fix` must be concrete. Write `scenario`/`fix` in Arabic with technical terms in English, and `plain` for the owner (common rule 14).
 5. **Coverage.** One entry per axis: `TESTED_DYNAMIC`, `REVIEWED_STATIC`, `NOT_TESTED` (reason) or `NOT_APPLICABLE` (reason).
 6. **Verdict.**
    - `BLOCKED` — iff there is a confirmed critical or high finding.
@@ -69,7 +69,7 @@ The test author turns every abuse case into a permanent negative test.
 4. **The axes.** All of them in `coverage`, using the security skill and its project-audit checklist (controls that should exist and do not).
 5. **Proof — static, plus local where you can.** Confirm Critical and High findings with a script under `proofs/` run against `localhost` with synthetic data, its output saved beside it, and cite it as `evidence`. When you cannot, the finding is `suspected` with `to_confirm`: the exact request or test that would settle it. Never target a non-local host (the guard blocks it).
 6. **Priority inputs.** `attacker` (who can exploit it), `reachability` and `compensating_controls` (what already limits it, e.g. an admin approves every payout by hand) decide the priority with the severity. The backlog tool computes it; you do not.
-7. `problem` and `expected_behavior` in Arabic say *what*; `fix_hint` is optional, non-binding, and lists in `fix_assumes` the ENV facts it depends on.
+7. `problem` and `expected_behavior` in Arabic say *what*; `plain` says it to the owner in one sentence (common rule 14), e.g. «قد يستطيع طالب حذف معاملة مالية»; `fix_hint` is optional, non-binding, and lists in `fix_assumes` the ENV facts it depends on.
 
 ---
 

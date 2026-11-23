@@ -36,6 +36,7 @@
       "compensating_controls": [],
       "problem": "<بالعربية: ما الخلل وأثره، بلا حل>",
       "expected_behavior": "<بالعربية: السلوك الصحيح القابل للاختبار>",
+      "plain": "<جملة لصاحب القرار: قد يستطيع مستخدم عادي حذف معاملة مالية>",
       "to_confirm": "<the exact request or test that would confirm or refute it, on localhost>",
       "fix_hint": "<optional, non-binding>",
       "fix_assumes": ["ENV-1", "ENV-5"],
@@ -60,6 +61,7 @@
       "evidence": ".team/tasks/TASK-001/evidence/<run>/dependencies.log",
       "problem": "<بالعربية>",
       "expected_behavior": "<بالعربية>",
+      "plain": "<جملة لصاحب القرار: مكتبة قديمة فيها ثغرة، لكن البرنامج لا يستخدم الجزء المصاب>",
       "external_claims": [{ "claim": "<e.g. the fixed release is not on npm>", "source": "<URL or command>", "checked_at": "2026-11-22" }],
       "isolate": true
     }

@@ -23,6 +23,7 @@ function finding(id, over = {}) {
     files: ['src/a.mjs'],
     problem: 'وصف المشكلة',
     expected_behavior: 'السلوك المتوقع',
+    plain: `شرح مبسط لـ ${id}`,
     ...over,
   };
 }
@@ -289,7 +290,8 @@ test('audit lifecycle: inventory → findings → challenge → backlog → gate
   write(root, `${T}/BACKLOG.md`, md.replace(/(<!-- sat:tm-risk:begin -->)[\s\S]*?(<!-- sat:tm-risk:end -->)/, '$1\nأبدأ بـ B-01 ثم B-02: قفل السحب ينتظر تغيير المشغّل.\n$2'));
   assert.equal(phase(root, 'next').code, 0);
   assert.equal(task(root).phase, 'GATE_A');
-  assert.equal(phase(root, 'approve', 'GATE_A', '--decision', 'approve', '--note', 'اعتمدت القائمة').code, 0);
+  assert.notEqual(phase(root, 'approve', 'GATE_A', '--decision', 'approve', '--note', 'تمام').code, 0, '"ok" is not an approval');
+  assert.equal(phase(root, 'approve', 'GATE_A', '--decision', 'approve', '--note', 'اعتمد القائمة').code, 0);
   assert.equal(task(root).phase, 'CLOSED');
 
   // After the audit PR is merged, a backlog item opens a task with its request ready.

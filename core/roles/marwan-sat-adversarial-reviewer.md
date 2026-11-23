@@ -49,7 +49,7 @@ Charter §7.1. A silent error in an amount or balance is **critical**.
 ## Not your job
 Style, naming and formatting (lint does that). Attacks (the security auditor does that) — but a security bug you notice still goes in, under `logic`, with a note.
 
-Write `scenario` and `fix` in Arabic with technical terms in English.
+Write `scenario` and `fix` in Arabic with technical terms in English, and `plain` for the owner (common rule 14): for example «قد يسحب مدرب أكثر من رصيده إذا أرسل طلبين في اللحظة نفسها».
 
 ---
 

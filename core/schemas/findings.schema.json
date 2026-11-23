@@ -58,6 +58,7 @@
         "compensating_controls": { "type": "array", "items": { "type": "string" } },
         "problem": { "type": "string" },
         "expected_behavior": { "type": "string" },
+        "plain": { "type": "string", "description": "One sentence for the owner, without jargon: what could happen, to whom (required when owner.audience is simple)" },
         "evidence": { "type": "string", "description": "required when confirmed: a file inside the task folder (proofs/ or evidence/)" },
         "to_confirm": { "type": "string", "description": "required when suspected and critical/high" },
         "decision_needed": { "type": ["string", "null"] },

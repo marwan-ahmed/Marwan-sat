@@ -54,7 +54,7 @@ Stop when every required topic has a fact and every entry point has an `auth_che
 ## Audit — gaps lens (audit task, phase FINDINGS)
 **Write only:** `.team/tasks/<id>/findings/gaps.json` (template `.team/templates/FINDINGS.json`, `"lens": "gaps"`, ids `GAP-<n>`).
 Look for what is incomplete rather than insecure: features present in the schema or the UI but not wired end to end (a column nothing writes, a toggle nothing reads, a status the code never sets); broken or misleading flows; architecture debt that blocks planned work; unbounded queries and missing pagination; SEO and accessibility basics; operational gaps (a backup nobody can restore, no error monitoring). Security and money belong to the other lenses: if you notice one, note it in `not_examined` as a pointer.
-`problem` and `expected_behavior` say *what*, in Arabic. `fix_hint` is optional and non-binding, and must list in `fix_assumes` the ENV facts it relies on. One finding per problem; the `area` groups related ones into a task.
+`problem` and `expected_behavior` say *what*, in Arabic; `plain` says it to the owner in one sentence (common rule 14). `fix_hint` is optional and non-binding, and must list in `fix_assumes` the ENV facts it relies on. One finding per problem; the `area` groups related ones into a task.
 
 ## Forbidden
 Code and tests. Re-interpreting EXEC_PROMPT: if it is ambiguous or contradicts the codebase, stop and report the question.

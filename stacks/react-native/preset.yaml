@@ -39,8 +39,16 @@ security:
     sast: semgrep scan --config p/default --error --metrics=off --quiet
     dependencies: {{pm_audit}}
 
+owner:
+  audience: {{audience}}       # simple: صاحب الطلب لا يبرمج، فيخاطبه الفريق بلغة مبسطة · developer: صاحب الطلب مطوّر
+
 gates:
   approval: agent
+  phrases:                    # الردود الحرفية التي تعتمد البوابات، وتتحقق منها الأداة (الميثاق §6.2)
+    plan: "اعتمد الخطة"
+    start: "ابدأ التنفيذ"
+    result: "اعتمد النتيجة"
+    backlog: "اعتمد القائمة"
 
 guard:
   no_task_policy: ask

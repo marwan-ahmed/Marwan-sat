@@ -13,3 +13,21 @@
 11. **Locations are symbols.** Point at code as `file#symbol` (a function, component, route or config key), never by line number alone: lines move with every edit. Write `file#(missing)` for something that should exist and does not.
 12. **External facts carry a source and a date.** A version number, a CVE, a library's maintenance status or a platform's behaviour is stated only with where you checked it (a URL, or a command such as `npm view <pkg>@<version> version`) and the date. If you could not check it, say so — never state it from memory.
 13. **Facts before fixes.** A fix is only correct in the environment it runs in (runtime, database driver, hosting). Name the facts a fix depends on; when they are unknown, the fix is a question, not an instruction.
+14. **The owner may not program.** {{AUDIENCE_NOTE}} Anything that can reach the owner has a plain version: each finding you write (REVIEW.json, SECURITY_AUDIT.json, audit findings) carries `plain` — one Arabic sentence a non-programmer understands: what could happen, and to whom, without file names or jargon (required when `owner.audience` is `simple`). Use these words with the owner:
+
+    | بدل | قل |
+    |---|---|
+    | PR / pull request | طلب الدمج |
+    | merge | الدمج (اعتماد التعديلات في البرنامج) |
+    | branch | نسخة عمل منفصلة |
+    | commit | نقطة حفظ |
+    | tests | اختبارات آلية |
+    | verify / CI | الفحص الآلي |
+    | bug | خطأ في البرنامج |
+    | vulnerability | ثغرة أمنية |
+    | Critical / High / Medium / Low | خطير جداً / خطير / متوسط / بسيط |
+    | confirmed / suspected | ثبت بالتجربة / مشتبه، لم يُثبت بالتجربة |
+    | P0 / P1 / P2 / P3 | عاجل جداً / عاجل / مهم / لاحقاً |
+    | endpoint / API | نقطة اتصال بالخادم |
+    | dependency / package | مكتبة خارجية |
+    | deploy | النشر للمستخدمين |

@@ -82,7 +82,16 @@ export function execPrompt({ blocking = 0, sensitive = 0, path = 'full' } = {}) 
 }
 
 // Drives a full-path task up to the start of IMPLEMENT (tests frozen).
-export function toImplement(root) {
+// Gate 1 (the plan) and the start gate are two separate replies from the owner, each checked word for word.
+export function approvePlanAndStart(root) {
+  const a = phase(root, 'approve', 'GATE_1', '--decision', 'approve', '--note', 'اعتمد الخطة');
+  if (a.code !== 0) throw new Error(a.out);
+  const b = phase(root, 'approve', 'GATE_START', '--decision', 'approve', '--note', 'ابدأ التنفيذ');
+  if (b.code !== 0) throw new Error(b.out);
+}
+
+// Everything up to Gate 1 (the plan), on the full path: TASKS.json is written, nothing in the project changed.
+export function toGate1(root) {
   phase(root, 'new', 'late days', '--path', 'full');
   write(root, `${T}/REQUEST.md`, 'أريد حساب أيام التأخير.\n');
   phase(root, 'next');
@@ -99,7 +108,11 @@ export function toImplement(root) {
     `${T}/TASKS.json`,
     JSON.stringify({ task_id: 'TASK-001', path: 'full', items: [{ id: 'T1', title: 'late days', acceptance: ['AC-1'], abuse_cases: [], allowed_write: ['src/late.mjs'] }] }),
   );
-  phase(root, 'approve', 'GATE_1', '--decision', 'approve', '--note', 'اعتمد');
+}
+
+export function toImplement(root) {
+  toGate1(root);
+  approvePlanAndStart(root);
   write(root, 'tests/late.test.mjs', "import { test } from 'node:test';\nimport assert from 'node:assert';\ntest('AC-1: late days', async () => {\n  const { lateDays } = await import('../src/late.mjs');\n  assert.equal(lateDays('2026-01-01', '2026-01-15'), 14);\n});\n");
   write(root, `${T}/TRACE.md`, '| AC-1 | tests/late.test.mjs | AC-1: late days | red | |\n');
   const r = phase(root, 'next');

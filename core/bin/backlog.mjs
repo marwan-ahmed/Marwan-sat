@@ -15,6 +15,7 @@ import { buildBacklog, checkAudit, loadSensitive, publicItem, renderBacklog, ren
 import { findRoot, loadProject } from './lib/config.mjs';
 import { readJSONFile } from './lib/contracts.mjs';
 import { headSha } from './lib/git.mjs';
+import { stageOf } from './lib/plain.mjs';
 import { reportHash, TM_BEGIN, TM_END, TM_PLACEHOLDER } from './lib/report-hash.mjs';
 import { activeTask, appendLedger, taskDir, writeTask } from './lib/state.mjs';
 
@@ -66,7 +67,7 @@ function main() {
   };
   writeFileSync(join(dir, 'BACKLOG.json'), `${JSON.stringify(json, null, 2)}\n`, 'utf8');
 
-  const text = renderBacklog(backlog, { auditId: task.id, title: task.title, head, tmBegin: TM_BEGIN, tmPlaceholder: TM_PLACEHOLDER, tmEnd: TM_END });
+  const text = renderBacklog(backlog, { auditId: task.id, title: task.title, head, tmBegin: TM_BEGIN, tmPlaceholder: TM_PLACEHOLDER, tmEnd: TM_END, audience: cfg.owner.audience, phrase: cfg.gates.phrases.backlog, badge: stageOf(task).badge });
   const out = join(dir, 'BACKLOG.md');
   let finalText = text;
   if (existsSync(out)) {

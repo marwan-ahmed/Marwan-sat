@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { execPrompt, git, guard, implementCorrectly, makeProject, phase, read, report, sh, T, task, toImplement, verify, write } from './helpers.mjs';
+import { approvePlanAndStart, execPrompt, git, guard, implementCorrectly, makeProject, phase, read, report, sh, T, task, toImplement, verify, write } from './helpers.mjs';
 
 test('full path: from request to closed, with a fix cycle', () => {
   const root = makeProject();
@@ -18,7 +18,7 @@ test('full path: from request to closed, with a fix cycle', () => {
   assert.equal(task(root).phase, 'REVIEW');
 
   // A confirmed high finding forces FIX and archives the review.
-  write(root, `${T}/REVIEW.json`, JSON.stringify({ verdict: 'BLOCKED', findings: [{ id: 'REV-01', lens: 'logic', severity: 'high', proof: 'confirmed', location: 'src/late.mjs:1', scenario: 's', evidence: 'e', fix: 'f' }] }));
+  write(root, `${T}/REVIEW.json`, JSON.stringify({ verdict: 'BLOCKED', findings: [{ id: 'REV-01', lens: 'logic', severity: 'high', proof: 'confirmed', location: 'src/late.mjs:1', scenario: 's', evidence: 'e', fix: 'f', plain: 'قد يُحسب عدد أيام التأخير خطأً لبعض العملاء.' }] }));
   write(root, `${T}/SECURITY_AUDIT.json`, JSON.stringify({ profile: 'web', verdict: 'CLEAR_WITHIN_SCOPE', coverage: [{ axis: 'access_control', status: 'NOT_APPLICABLE', reason: 'no entry point' }], findings: [] }));
   assert.equal(phase(root, 'next').code, 0);
   assert.equal(task(root).phase, 'FIX');
@@ -35,12 +35,14 @@ test('full path: from request to closed, with a fix cycle', () => {
   assert.equal(report(root).code, 0);
   assert.notEqual(phase(root, 'next').code, 0, 'risk section must be written first');
   let rep = read(root, `${T}/REPORT.md`);
-  write(root, `${T}/REPORT.md`, rep.replace('## 3. ما تغيّر', '## 3. ما تغيّر (معدّل)'));
+  write(root, `${T}/REPORT.md`, rep.replace('## 7. ما تغيّر', '## 7. ما تغيّر (معدّل)'));
   assert.notEqual(phase(root, 'next').code, 0, 'generated sections are hash-locked');
   rep = rep.replace(/(<!-- sat:tm-risk:begin -->)[\s\S]*?(<!-- sat:tm-risk:end -->)/, '$1\nالمخاطرة المتبقية منخفضة ومحصورة في دالة صافية.\n$2');
   write(root, `${T}/REPORT.md`, rep);
   assert.equal(phase(root, 'next').code, 0);
-  assert.equal(phase(root, 'approve', 'GATE_2', '--decision', 'approve', '--note', 'اعتمدت').code, 0);
+  assert.equal(phase(root, 'approve', 'GATE_2', '--decision', 'approve', '--note', 'اعتمدت').code === 0, false, 'a paraphrase is not an approval');
+  assert.equal(task(root).phase, 'GATE_2');
+  assert.equal(phase(root, 'approve', 'GATE_2', '--decision', 'approve', '--note', 'اعتمد النتيجة').code, 0);
   assert.equal(task(root).phase, 'CLOSED');
 
   // The next task must not start from the previous task's branch, and never reuses its id
@@ -82,6 +84,8 @@ test('light path: touching a sensitive path fails verify', () => {
   write(root, `${T}/EXEC_PROMPT.md`, execPrompt({ path: 'light' }));
   write(root, `${T}/TASKS.json`, JSON.stringify({ task_id: 'TASK-001', path: 'light', items: [{ id: 'T1', title: 't', acceptance: [], allowed_write: ['src/payment-label.mjs'] }] }));
   assert.equal(phase(root, 'next').code, 0);
+  assert.equal(task(root).phase, 'GATE_1', 'the light path also asks for the plan and the start permission');
+  approvePlanAndStart(root);
   assert.equal(task(root).phase, 'IMPLEMENT');
   write(root, 'src/payment-label.mjs', 'export const label = "x";\n');
   git(root, 'add', '-A');

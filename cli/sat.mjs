@@ -31,7 +31,7 @@ const SAT = satCommand(SAT_ROOT, satVersion(SAT_ROOT));
 const HELP = `Marwan SAT — Marwan Software Agents Team
 
 Usage:
-  sat init [--stack nextjs|laravel|flutter|react-native|custom] [--platform antigravity] [--name <name>] [--dir <path>]
+  sat init [--stack nextjs|laravel|flutter|react-native|custom] [--platform antigravity] [--name <name>] [--audience simple|developer] [--dir <path>]
       Installs the team in the project: .team/, project.yaml, the Antigravity files and the CI workflow.
   sat doctor [--quick] [--dir <path>]
       Checks readiness and runs the project.yaml commands (--quick only checks that the tools exist).
@@ -72,6 +72,8 @@ function cmdInit(root, opts) {
   if (!STACKS.includes(stack)) fail(`Unsupported stack: ${stack}`);
   const platform = opts.platform || 'antigravity';
   if (platform !== 'antigravity') fail(`Platform ${platform} is planned for a later release. This version supports antigravity.`);
+  const audience = opts.audience || 'simple';
+  if (!['simple', 'developer'].includes(audience)) fail('--audience must be simple (the owner does not program) or developer');
   const pm = detectPackageManager(root);
   const pmc = pmCommands(pm);
   const version = satVersion(SAT_ROOT);
@@ -79,6 +81,7 @@ function cmdInit(root, opts) {
     sat_version: version,
     name: String(opts.name || detectName(root)).replace(/["\\]/g, ''),
     platform,
+    audience,
     base_branch: detectBaseBranch(root),
     pm_install: pmc.install,
     pm_run: pmc.run,

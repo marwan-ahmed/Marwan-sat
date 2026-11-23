@@ -70,6 +70,7 @@
           "evidence": { "type": "string" },
           "scenario": { "type": "string" },
           "fix": { "type": "string" },
+          "plain": { "type": "string", "description": "One sentence for the owner, without jargon (required for critical/high/medium when owner.audience is simple)" },
           "reference": { "type": "string" }
         }
       }

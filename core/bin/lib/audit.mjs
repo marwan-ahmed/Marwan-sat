@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { COVERAGE, PROOFS, SEVERITIES } from './contracts.mjs';
 import { changedSince, effectiveBase, porcelainFiles } from './git.mjs';
 import { matchAny, parsePathList, toPosix } from './glob.mjs';
+import { labels } from './plain.mjs';
 import { taskRel } from './state.mjs';
 
 export const AXES = {
@@ -141,12 +142,13 @@ export function unguardedEntryPoints(eps) {
 
 // ---------------------------------------------------------------------------------------------- FINDINGS
 
-export function validateFinding(f, { prefix, where, envIds = new Set(), epIds = new Set(), root = null, taskDirRel = null }) {
+export function validateFinding(f, { prefix, where, envIds = new Set(), epIds = new Set(), root = null, taskDirRel = null, requirePlain = false }) {
   const errors = [];
   const at = `${where} ${f && f.id ? f.id : 'finding'}`;
   if (!f || typeof f !== 'object') return [`${where}: a finding is not an object`];
   if (!new RegExp(`^${prefix}-\\d+$`).test(f.id || '')) errors.push(`${at}: id must look like ${prefix}-1`);
   for (const k of ['title', 'problem', 'expected_behavior']) if (!isStr(f[k])) errors.push(`${at}: ${k} is required`);
+  if (requirePlain && !isStr(f.plain)) errors.push(`${at}: plain is required (owner.audience is simple): one sentence a non-programmer understands — what could happen, to whom`);
   if (!FINDING_TYPES.includes(f.type)) errors.push(`${at}: type must be one of ${FINDING_TYPES.join(', ')}`);
   if (!AREA.test(f.area || '')) errors.push(`${at}: area must be kebab-case (it groups findings into tasks), e.g. "authz" or "db-layer"`);
   if (!SEVERITIES.includes(f.severity)) errors.push(`${at}: severity must be one of ${SEVERITIES.join(', ')} (charter §7.1)`);
@@ -341,7 +343,7 @@ export function checkAudit(root, cfg, task, upto) {
   if (!task.last_verify) errors.push('Run node .team/bin/verify.mjs once in this audit before leaving INVENTORY: its scanner logs are the evidence the security lens triages.');
   if (upto === 'inventory') return { errors, data: out };
 
-  const ctx = { taskId: task.id, profile: cfg.security.profile, envIds: iv.envIds, epIds: new Set(iv.eps.map((p) => p.id)), root, taskDirRel: T };
+  const ctx = { taskId: task.id, profile: cfg.security.profile, envIds: iv.envIds, epIds: new Set(iv.eps.map((p) => p.id)), root, taskDirRel: T, requirePlain: Boolean(cfg.owner && cfg.owner.audience === 'simple') };
   const allIds = [];
   for (const lens of Object.keys(LENSES)) {
     const r = findings[lens];
@@ -486,7 +488,7 @@ export function buildBacklog(data, opts) {
     if (r && r.verdict === 'disputed') {
       const failed = CHALLENGE_CHECKS.filter((k) => r.checks && r.checks[k] === 'no');
       f.disputed = { by: r.by, reason: r.reason, proposed_severity: r.proposed_severity || null, failed_checks: failed };
-      disputed.push({ id: f.id, severity: f.severity, ...f.disputed });
+      disputed.push({ id: f.id, severity: f.severity, title: f.title, plain: f.plain || null, ...f.disputed });
     }
   }
 
@@ -610,7 +612,7 @@ export function buildBacklog(data, opts) {
       path: full ? 'full' : 'light',
       path_reason: full ? (sensitiveHits.length ? `مسارات حساسة: ${sensitiveHits.join(', ')}` : 'تغيير اعتماديات أو ثغرة Critical/High') : 'لا يمس مساراً حساساً',
       area: it.area,
-      findings: fs.map((f) => ({ id: f.id, severity: f.severity, proof: f.proof, title: f.title, origin: f.origin, merged: f.merged || [], disputed: Boolean(f.disputed), unchallenged: Boolean(f.unchallenged) })),
+      findings: fs.map((f) => ({ id: f.id, severity: f.severity, proof: f.proof, title: f.title, plain: f.plain || null, origin: f.origin, merged: f.merged || [], disputed: Boolean(f.disputed), unchallenged: Boolean(f.unchallenged) })),
       files,
       depends_on: [...govIds.map((g) => ({ item: g, type: 'governance', reason: 'project rules come first' })), ...[...it.depends.entries()].map(([k, d]) => ({ item: idOf.get(k), type: 'logical', reason: d.reason, via: d.via }))],
       conflicts_with: it.conflicts.map((c) => ({ item: idOf.get(c.key), note: c.note })),
@@ -623,17 +625,28 @@ export function buildBacklog(data, opts) {
   }
 
   // 8. What the owner must do or decide, and what was not examined.
+  // Each action in two wordings: plain for the owner's part, technical (with the setting) for the programmer's.
   const ownerActions = [];
+  const lbs = labels('simple');
   for (const s of ((opts.verifySummary && opts.verifySummary.steps) || []).filter((x) => x.kind === 'scanner')) {
-    if (s.status === 'missing') ownerActions.push(`ثبّت الماسح «${s.name}» محلياً (${s.reason || s.command}). بدونه يسجّل verify في كل مهمة أن الماسح «غير مثبت».`);
-    if (s.status === 'not_configured') ownerActions.push(`اضبط security.scanners.${s.name} في project.yaml.`);
+    if (s.status === 'missing')
+      ownerActions.push({
+        simple: `ثبّت أداة «${lbs.step(s.name)}» على جهاز التطوير، أو اطلب ذلك من مبرمج. بدونها لا يكتمل الفحص الآلي في أي بند.`,
+        developer: `ثبّت الماسح «${s.name}» محلياً (${s.reason || s.command}). بدونه يسجّل verify في كل مهمة أن الماسح «غير مثبت».`,
+      });
+    if (s.status === 'not_configured')
+      ownerActions.push({ simple: `اطلب من مبرمج تفعيل أداة «${lbs.step(s.name)}» في إعدادات الفريق.`, developer: `اضبط security.scanners.${s.name} في project.yaml.` });
   }
-  if (opts.profile === 'web' && opts.attackEnv === 'none') ownerActions.push('اضبط security.attack_env (فرع Neon بالمخطط فقط أو حاوية Postgres) حتى لا يخرج التدقيق الأمني في كل مهمة INCOMPLETE.');
+  if (opts.profile === 'web' && opts.attackEnv === 'none')
+    ownerActions.push({
+      simple: 'اطلب من مبرمج تجهيز «بيئة تجربة أمنية» منفصلة ببيانات وهمية، حتى يجرّب المدقق الأمني الهجمات فعلاً بدل الاكتفاء بقراءة الكود.',
+      developer: 'اضبط security.attack_env (فرع Neon بالمخطط فقط أو حاوية Postgres) حتى لا يخرج التدقيق الأمني في كل مهمة INCOMPLETE.',
+    });
   const notExamined = [];
   for (const [lens, file] of Object.entries(data.findings)) for (const x of file.not_examined || []) notExamined.push({ lens, ...x });
   const sec = data.findings.security;
   const coverageGaps = sec ? (sec.coverage || []).filter((c) => c.status === 'NOT_TESTED').map((c) => ({ axis: c.axis, reason: c.reason })) : [];
-  const unchallenged = kept.filter((f) => f.unchallenged).map((f) => ({ id: f.id, by: f.origin.split(':')[1], title: f.title, severity: f.severity }));
+  const unchallenged = kept.filter((f) => f.unchallenged).map((f) => ({ id: f.id, by: f.origin.split(':')[1], title: f.title, plain: f.plain || null, severity: f.severity }));
   const stats = {
     findings: all.length,
     kept: kept.length,
@@ -667,6 +680,7 @@ export function renderRequest(item, { auditId, environment }) {
   L.push('## المشكلة');
   for (const f of item._findings) {
     L.push(`- **${f.id}** (${SEV[f.severity]}، ${PROOF[f.proof]}): ${f.problem}`);
+    if (isStr(f.plain)) L.push(`  - بكلام بسيط: ${f.plain}`);
     L.push(`  - الموقع: \`${f.location}\`${f.evidence ? ` · الدليل: \`${f.evidence}\`` : ''}${f.reachability ? ` · الوصول: ${f.reachability}` : ''}`);
     if (f.compensating_controls && f.compensating_controls.length) L.push(`  - ضوابط تعويضية قائمة: ${f.compensating_controls.join('؛ ')}`);
   }
@@ -700,61 +714,77 @@ export function renderRequest(item, { auditId, environment }) {
   return `${L.join('\n')}\n`;
 }
 
-export function renderBacklog(b, { auditId, title, head, tmBegin, tmPlaceholder, tmEnd }) {
+export function renderBacklog(b, { auditId, title, head, tmBegin, tmPlaceholder, tmEnd, audience = 'simple', phrase = 'اعتمد القائمة', badge = '' }) {
+  const lb = labels(audience);
+  const WHO = { reviewer: 'المراجع المعادي', auditor: 'المدقق الأمني' };
+  const plainOf = (x) => x.plain || x.title;
   const L = [];
   L.push(`# قائمة مهام التدقيق — ${auditId}: ${title}`, '');
-  L.push('> مولَّدة آلياً بأداة `backlog.mjs` من INVENTORY.json وملفات النتائج والطعن، باستثناء القسم 7. أي تعديل يدوي على الأقسام المولّدة يُبطلها.');
-  L.push(`> HEAD: \`${String(head || '').slice(0, 10)}\` · النتائج: ${b.stats.findings} (بعد دمج المكرر: ${b.stats.kept}) · مؤكد ${b.stats.confirmed} / مشتبه ${b.stats.suspected} · الطعن: ${b.stats.challenge.upheld} مُثبَتة، ${b.stats.challenge.disputed} مطعون فيها، ${b.stats.challenge.duplicate} مكررة`, '');
+  if (badge) L.push(`> ${badge}`, '>');
+  L.push('> هذه القائمة جزآن: **الأول لك** لتقرر، **والثاني للمبرمج** (الملفات والأدلة وحقائق البيئة). مولَّدة آلياً بأداة `backlog.mjs`، إلا القسم 5. أي تعديل يدوي على الأقسام المولّدة يُبطلها.', '');
 
+  L.push('# الجزء الأول: لك', '');
   L.push('## 1. القرار المطلوب منك');
-  L.push('- اعتماد القائمة (ثم دمج PR التدقيق)، أو طلب تعديل، أو الإلغاء (البوابة A).');
+  L.push(`- **للاعتماد** اكتب حرفياً: «${phrase}»، ثم ${lb.simple ? 'ادمج طلب الدمج الخاص بهذا التدقيق على GitHub' : 'ادمج PR هذا التدقيق'}. **لطلب تعديل:** «عدّل: …». **وللإلغاء:** «ألغِ المهمة».`);
+  L.push('- **اعتماد القائمة لا يبدأ أي عمل في برنامجك.** كل بند يُحضَّر لاحقاً حين تطلبه، ثم يمر ببوابتين منفصلتين: «اعتماد الخطة» ثم «إذن البدء».');
   for (const d of b.disputed)
-    L.push(`- **${d.id} مطعون فيها** من ${d.by === 'reviewer' ? 'المراجع المعادي' : 'المدقق الأمني'}: ${d.reason}${d.proposed_severity ? ` (يقترح ${SEV[d.proposed_severity]} بدل ${SEV[d.severity]})` : ''}. أنت وحدك تملك تخفيض الدرجة؛ دون قرارك تبقى كما هي.`);
-  for (const u of b.unchallenged) L.push(`- **${u.id}** (${SEV[u.severity]}) أضافها ${u.by === 'reviewer' ? 'المراجع' : 'المدقق'} في مرحلة الطعن ولم يطعن فيها أحد: ${u.title}`);
-  for (const c of b.conflicts) L.push(`- **تعارض** بين ${c.findings.join(' و')} (${c.items.join('، ')}): ${c.note}`);
-  for (const q of b.unknowns) L.push(`- **حقيقة بيئة غير معروفة** ${q.id} (${q.topic}): ${q.question}`);
-  for (const it of b.items) for (const d of it.decisions) L.push(`- ${it.id}: ${d} _(يُطرح عليك في البوابة 0 لهذه المهمة)_`);
+    L.push(`- **نتيجة مختلف عليها** (${d.id}): ${plainOf(d)} — يرى ${WHO[d.by] || d.by}: ${d.reason}${d.proposed_severity ? ` (يقترح «${lb.sev(d.proposed_severity)}» بدل «${lb.sev(d.severity)}»)` : ''}. أنت وحدك تملك تخفيف الدرجة، ودون قرارك تبقى كما هي.`);
+  for (const u of b.unchallenged) L.push(`- **نتيجة أضيفت متأخرة ولم يراجعها أحد** (${u.id}، ${lb.sev(u.severity)}): ${plainOf(u)}`);
+  for (const c of b.conflicts) L.push(`- **حلّان متعارضان** (${c.findings.join(' و')}): ${c.note}`);
+  for (const q of b.unknowns) L.push(lb.simple ? `- **سؤال تقني لم نستطع حسمه، يجيب عنه مبرمج** (${q.id}): ${q.question}` : `- **حقيقة بيئة غير معروفة** ${q.id} (${q.topic}): ${q.question}`);
+  for (const it of b.items) for (const d of it.decisions) L.push(`- ${it.id}: ${lb.simple ? d.replace(/^[A-Z]+-\d+:\s*/, '') : d} _(سيُطرح عليك حين يُحضَّر هذا البند)_`);
   L.push('');
 
-  L.push('## 2. إجراءات قبل أي مهمة');
-  if (b.ownerActions.length) for (const a of b.ownerActions) L.push(`- ${a}`);
+  L.push('## 2. ما تفعله أنت قبل أي بند');
+  if (b.ownerActions.length) for (const a of b.ownerActions) L.push(`- ${lb.simple ? a.simple : a.developer}`);
   else L.push('- لا شيء.');
   L.push('');
 
-  L.push('## 3. ترتيب المهام');
-  L.push('| الترتيب | البند | الأولوية | المسار | العنوان | النتائج | يعتمد على | تأكيد أولاً |');
-  L.push('|---|---|---|---|---|---|---|---|');
+  L.push('## 3. القائمة بالترتيب');
+  L.push(`| الترتيب | البند | ${lb.simple ? 'الأهمية' : 'الأولوية'} | العمل | ${lb.simple ? 'لماذا يهم' : 'النتائج'} | ينتظر |`);
+  L.push('|---|---|---|---|---|---|');
   b.items.forEach((it, i) => {
-    const TYPE = { governance: 'حوكمة', logical: 'منطقي' };
-    const deps = it.depends_on.map((d) => `${d.item} (${TYPE[d.type] || d.type})`);
-    L.push(`| ${i + 1} | ${it.id} | ${it.priority}${it.promoted ? ` ↑ من ${it.promoted.from} لأن ${it.promoted.because} ينتظره` : ''} | ${it.path === 'full' ? 'كامل' : 'خفيف'} | ${esc(it.title)} | ${it.findings.map((f) => `${f.id}${f.disputed ? '⚠' : ''}`).join(', ') || '—'} | ${deps.join(', ') || '—'} | ${it.confirm_first.map((c) => c.id).join(', ') || '—'} |`);
+    const why = it.governance === 'agents_md' ? 'قواعد المشروع التي يلتزم بها الفريق في كل بند' : it.findings.map((f) => (lb.simple ? plainOf(f) : `${f.id}${f.disputed ? '⚠' : ''}`)).join(lb.simple ? '؛ ' : ', ');
+    const waits = it.depends_on.map((d) => d.item);
+    L.push(`| ${i + 1} | ${it.id} | ${lb.priority(it.priority)}${it.promoted ? ` ↑ (لأن ${it.promoted.because} ينتظره)` : ''} | ${esc(it.title)} | ${esc(why)} | ${waits.join(', ') || '—'} |`);
   });
-  L.push('', 'الأولوية من جدول ثابت (الميثاق §7.8): الدرجة × الإثبات × قابلية الوصول × من يستطيع الاستغلال. لا تقدير يدوي.', '');
-  L.push('افتح أي بند بعد دمج هذا التدقيق: `node .team/bin/phase.mjs new --from ' + `${auditId}:<البند>` + '`', '');
+  L.push('', lb.simple ? 'الأهمية محسوبة آلياً من جدول ثابت: مدى الخطورة، وهل ثبتت بالتجربة، ومن يستطيع استغلالها. لا تقدير شخصي فيها.' : 'الأولوية من جدول ثابت (الميثاق §7.8): الدرجة × الإثبات × قابلية الوصول × من يستطيع الاستغلال. لا تقدير يدوي.');
+  L.push('', `لتحضير بند بعد دمج هذا التدقيق، اكتب: «حضّر البند B-01 من التدقيق ${auditId}». التحضير لا يغيّر شيئاً في برنامجك.`, '');
 
-  L.push('## 4. تفاصيل البنود');
+  L.push('## 4. ما لم يُفحص');
+  const gaps = [...b.notExamined.map((x) => `${x.what} — ${x.reason}`), ...b.coverageGaps.map((c) => `${lb.simple ? 'جانب أمني لم يُختبر' : 'محور أمني لم يُختبر'}: ${c.axis} — ${c.reason}`)];
+  if (gaps.length) for (const g of gaps) L.push(`- ${g}`);
+  else L.push('- لا شيء مسجّل. (هذا القسم إلزامي حتى لو كان فارغاً.)');
+  L.push('');
+
+  L.push('## 5. تقدير المدير التقني');
+  L.push(tmBegin, tmPlaceholder, tmEnd, '');
+
+  L.push('# الجزء الثاني: التفاصيل التقنية (للمبرمج)', '');
+  L.push(`> HEAD: \`${String(head || '').slice(0, 10)}\` · النتائج: ${b.stats.findings} (بعد دمج المكرر: ${b.stats.kept}) · مؤكد ${b.stats.confirmed} / مشتبه ${b.stats.suspected} · الطعن: ${b.stats.challenge.upheld} مُثبَتة، ${b.stats.challenge.disputed} مطعون فيها، ${b.stats.challenge.duplicate} مكررة`, '');
+  L.push(`فتح بند: \`node .team/bin/phase.mjs new --from ${auditId}:<البند>\``, '');
+  if (lb.simple && b.ownerActions.length) {
+    L.push('**الإعدادات المطلوبة قبل أي بند:**');
+    for (const a of b.ownerActions) L.push(`- ${a.developer}`);
+    L.push('');
+  }
+  L.push('## 6. تفاصيل البنود');
   for (const it of b.items) {
     L.push(`### ${it.id} — ${it.title}`);
     L.push(`- الأولوية ${it.priority} · المسار ${it.path === 'full' ? 'الكامل' : 'الخفيف'} (${it.path_reason || '—'}) · المجال \`${it.area}\``);
-    if (it.findings.length) L.push(`- النتائج: ${it.findings.map((f) => `${f.id} ${SEV[f.severity]}/${PROOF[f.proof]}${f.merged.length ? ` (دُمجت معها ${f.merged.join(', ')})` : ''}`).join('؛ ')}`);
+    if (it.findings.length) L.push(`- النتائج: ${it.findings.map((f) => `${f.id} ${SEV[f.severity]}/${PROOF[f.proof]}${f.disputed ? ' ⚠ مطعون فيها' : ''}${f.merged.length ? ` (دُمجت معها ${f.merged.join(', ')})` : ''}`).join('؛ ')}`);
+    const deps = it.depends_on.map((d) => `${d.item} (${d.type === 'governance' ? 'حوكمة' : 'منطقي'}${d.reason && d.type !== 'governance' ? `: ${d.reason}` : ''})`);
+    if (deps.length) L.push(`- يعتمد على: ${deps.join('؛ ')}`);
+    if (it.confirm_first.length) L.push(`- يُؤكَّد أولاً: ${it.confirm_first.map((c) => c.id).join(', ')}`);
     L.push(`- الملفات: ${it.files.map((f) => `\`${f}\``).join(', ')}`);
     if (it.shares_files_with.length) L.push(`- يشارك ملفات مع: ${it.shares_files_with.join(', ')} (لا تُنفّذ بالتوازي)`);
     L.push(`- الطلب الجاهز: \`requests/${it.id}.md\``, '');
   }
 
-  L.push('## 5. المكرر والمدموج');
+  L.push('## 7. المكرر والمدموج');
   if (b.duplicates.length) for (const d of b.duplicates) L.push(`- ${d.id} ← ${d.into}: ${d.reason}`);
   else L.push('- لا شيء.');
   L.push('');
-
-  L.push('## 6. ما لم يُفحص');
-  const gaps = [...b.notExamined.map((x) => `${x.what} — ${x.reason} (${x.lens})`), ...b.coverageGaps.map((c) => `محور أمني لم يُختبر: ${c.axis} — ${c.reason}`)];
-  if (gaps.length) for (const g of gaps) L.push(`- ${g}`);
-  else L.push('- لا شيء مسجّل. (هذا القسم إلزامي حتى لو كان فارغاً.)');
-  L.push('');
-
-  L.push('## 7. تقدير المدير التقني');
-  L.push(tmBegin, tmPlaceholder, tmEnd, '');
 
   L.push('## 8. حقائق البيئة التي بُنيت عليها النتائج');
   L.push('| المعرّف | الموضوع | الحقيقة | الدليل |');

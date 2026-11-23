@@ -67,8 +67,23 @@
         }
       }
     },
-    "gates": { "type": "object", "properties": { "approval": { "enum": ["agent", "owner"] } } },
+    "gates": { "type": "object", "properties": { "phrases": {
+          "type": "object",
+          "description": "The exact replies that approve a gate; the tool records an approval only when the owner's reply matches (charter §6.2). They must differ from each other.",
+          "properties": {
+            "plan": { "type": "string", "default": "اعتمد الخطة" },
+            "start": { "type": "string", "default": "ابدأ التنفيذ" },
+            "result": { "type": "string", "default": "اعتمد النتيجة" },
+            "backlog": { "type": "string", "default": "اعتمد القائمة" }
+          }
+        },
+        "approval": { "enum": ["agent", "owner"] } } },
     "guard": { "type": "object", "properties": { "no_task_policy": { "enum": ["ask", "allow", "deny"] } } },
+    "owner": {
+      "type": "object",
+      "description": "Who the team talks to (charter §6.1). simple: the owner does not program — plain Arabic, technical detail at the end. developer: technical vocabulary.",
+      "properties": { "audience": { "enum": ["simple", "developer"], "default": "simple" } }
+    },
     "audit": {
       "type": "object",
       "description": "Audit tasks (charter §5.5, §7.8): the size limits of one backlog item.",

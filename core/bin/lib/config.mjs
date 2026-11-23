@@ -1,6 +1,7 @@
 // Marwan SAT — project configuration (.team/project.yaml).
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { AUDIENCES, DEFAULT_PHRASES, normalizePhrase } from './plain.mjs';
 import { parseYaml } from './yaml.mjs';
 
 export const STACKS = ['nextjs', 'laravel', 'flutter', 'react-native', 'custom'];
@@ -25,7 +26,8 @@ export const DEFAULTS = {
     scan_scope: 'diff',
     scanners: { secrets: null, sast: null, dependencies: null },
   },
-  gates: { approval: 'agent' },
+  owner: { audience: 'simple' },
+  gates: { approval: 'agent', phrases: { ...DEFAULT_PHRASES } },
   guard: { no_task_policy: 'ask' },
   limits: { question_rounds: 2, verify_failures: 2, fix_cycles: 2, max_credits_per_task: null },
   audit: { max_findings_per_task: 3, max_files_per_task: 8 },
@@ -64,6 +66,15 @@ export function validateProject(cfg) {
   if (!SCAN_SCOPES.includes(cfg.security.scan_scope)) errors.push(`security.scan_scope: must be one of ${SCAN_SCOPES.join(', ')}`);
   if (!ATTACK_ENVS.includes(cfg.security.attack_env)) errors.push(`security.attack_env: must be one of ${ATTACK_ENVS.join(', ')}`);
   if (!['agent', 'owner'].includes(cfg.gates.approval)) errors.push('gates.approval: must be "agent" or "owner"');
+  if (!cfg.owner || !AUDIENCES.includes(cfg.owner.audience)) errors.push(`owner.audience: must be one of ${AUDIENCES.join(', ')}`);
+  const phrases = (cfg.gates && cfg.gates.phrases) || {};
+  const seen = new Map();
+  for (const k of Object.keys(DEFAULT_PHRASES)) {
+    const v = phrases[k];
+    if (typeof v !== 'string' || normalizePhrase(v).length < 2) errors.push(`gates.phrases.${k}: must be a non-empty phrase`);
+    else if (seen.has(normalizePhrase(v))) errors.push(`gates.phrases.${k}: must differ from gates.phrases.${seen.get(normalizePhrase(v))} (one reply must never approve two gates)`);
+    else seen.set(normalizePhrase(v), k);
+  }
   if (!['ask', 'allow', 'deny'].includes(cfg.guard.no_task_policy)) errors.push('guard.no_task_policy: must be ask, allow or deny');
   if (!Array.isArray(cfg.paths.tests) || cfg.paths.tests.length === 0) errors.push('paths.tests: at least one glob is required');
   if (!Array.isArray(cfg.commands.extra)) errors.push('commands.extra: must be a list');

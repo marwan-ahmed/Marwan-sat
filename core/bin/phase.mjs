@@ -6,7 +6,9 @@
 //   node .team/bin/phase.mjs new --from TASK-<n>:B-<m>            # open a task from an approved audit backlog
 //   node .team/bin/phase.mjs status [--json]
 //   node .team/bin/phase.mjs next
-//   node .team/bin/phase.mjs approve <GATE_0|GATE_1|GATE_2|GATE_A> --decision <approve|changes|cancel> [--to <PHASE>] --note "<owner's words>"
+//   node .team/bin/phase.mjs approve <GATE_0|GATE_1|GATE_START|GATE_2|GATE_A> --decision <approve|changes|cancel> [--to <PHASE>] --note "<owner's words>"
+//     An approval of GATE_1 (plan), GATE_START (start), GATE_2 (result) or GATE_A (backlog) is recorded only when
+//     --note is exactly the owner's reply phrase from project.yaml (gates.phrases).
 //   node .team/bin/phase.mjs goto DESIGN --reason "<CHANGE_REQUEST-n>"
 //   node .team/bin/phase.mjs escalate "<reason>"
 //   node .team/bin/phase.mjs resume --to <PHASE> --note "<owner decision>"
@@ -22,6 +24,7 @@ import { currentBranch, git, headSha, isGitRepo, porcelainFiles } from './lib/gi
 import { matchAny } from './lib/glob.mjs';
 import { reportHash, tmSectionFilled } from './lib/report-hash.mjs';
 import { activeTask, appendLedger, AUDIT_PHASES, GATES, listTasks, nextTaskId, readJSON, readState, taskDir, taskRel, TERMINAL, writeState, writeTask } from './lib/state.mjs';
+import { GATE_PHRASE, hasStarted, phraseMatches, stageOf } from './lib/plain.mjs';
 import { parseFrontmatter } from './lib/yaml.mjs';
 
 const NEXT_ACTOR = {
@@ -30,19 +33,20 @@ const NEXT_ACTOR = {
   GATE_0: 'Gate 0: show the questions and assumptions to the owner verbatim, record the reply verbatim in ANSWERS.md, then approve GATE_0.',
   DESIGN: 'Call marwan-sat-architect to write SPEC.md, ARCH.md and PLAN.md, then phase next.',
   THREAT: 'Call marwan-sat-security-auditor (threat model mode) to write THREAT_MODEL.md, then phase next.',
-  GATE_1: 'Write TASKS.json from PLAN.md, then show the design summary to the owner. Approve only after their explicit approval.',
+  GATE_1: 'Gate 1 — plan approval (preparation; nothing changes yet). On the full path write TASKS.json from PLAN.md. Present the plan to the owner in your Gate 1 format ({audience} audience). Record it only when the owner replies exactly «{plan}»: approve GATE_1 --note "{plan}".',
+  GATE_START: 'Start permission — a separate question from the plan. Ask the owner whether the team may start changing the project now. Record it only when the owner replies exactly «{start}»: approve GATE_START --note "{start}". Any other reply, including an approval of the plan, "ok" or "تمام", is not permission: the task waits here.',
   TESTS: 'Call marwan-sat-test-author to write the tests and TRACE.md, then phase next (it creates the freeze commit).',
   IMPLEMENT: 'Call marwan-sat-implementer: implement, commit, then verify. After verify passes, run phase next.',
   REVIEW: 'Call marwan-sat-adversarial-reviewer (and, on the full path, marwan-sat-security-auditor in audit mode) in parallel, then phase next.',
   FIX: 'Call marwan-sat-implementer to fix the blocking findings only, then verify, then phase next.',
   REPORT: 'Run report.mjs, write only the risk assessment section, push the branch and open a PR, then phase next.',
-  GATE_2: 'Gate 2: show REPORT.md and the PR link to the owner. Only the owner merges.',
+  GATE_2: 'Gate 2: show REPORT.md and the PR link to the owner ({audience} audience). Only the owner merges. Record the approval only when the owner replies exactly «{result}».',
   ESCALATED: 'The task is paused. Present the escalation to the owner in the charter §7.6 format, then resume with their decision.',
   INVENTORY: 'Run node .team/bin/verify.mjs once (scanner evidence), then call marwan-sat-architect (inventory mode) to write INVENTORY.json, then phase next.',
   FINDINGS: 'Call marwan-sat-security-auditor, marwan-sat-adversarial-reviewer and marwan-sat-architect (audit mode) in parallel; each writes only its own findings file. Then phase next.',
   CHALLENGE: 'Call marwan-sat-adversarial-reviewer (challenges security.json and gaps.json) and marwan-sat-security-auditor (challenges logic-money.json) in parallel. Then phase next.',
   BACKLOG: 'Run node .team/bin/backlog.mjs and write only the tech-manager section of BACKLOG.md, then phase next.',
-  GATE_A: 'Commit the task folder only, push the branch and open a PR. Then Gate A: show BACKLOG.md and the PR link to the owner. The owner merges; record the decision with approve GATE_A.',
+  GATE_A: 'Commit the task folder only, push the branch and open a PR. Then Gate A: show BACKLOG.md and the PR link to the owner ({audience} audience). The owner merges; record the approval only when the owner replies exactly «{backlog}». Approving the list starts nothing: each item is prepared later, on the owner\'s request.',
   CLOSED: 'The task is closed.',
   CANCELLED: 'The task is cancelled.',
 };
@@ -72,6 +76,15 @@ function requireActive(root) {
   return task;
 }
 
+// The next-actor hint with this project's reply phrases and audience filled in.
+function nextText(cfg, phase) {
+  const t = NEXT_ACTOR[phase] || '';
+  const ph = (cfg && cfg.gates && cfg.gates.phrases) || {};
+  return t
+    .replace(/\{(plan|start|result|backlog)\}/g, (_, k) => ph[k] || k)
+    .replace(/\{audience\}/g, () => (cfg && cfg.owner ? cfg.owner.audience : 'simple'));
+}
+
 function transition(root, task, to, extra = {}) {
   const from = task.phase;
   task.phase = to;
@@ -80,7 +93,15 @@ function transition(root, task, to, extra = {}) {
   writeState(root, { active_task: TERMINAL.includes(to) ? null : task.id, phase: to, last_task: task.id });
   appendLedger(root, { type: 'phase', task: task.id, from, to, ...extra });
   console.log(`[SAT] ${task.id}: ${from} → ${to}`);
-  console.log(`[SAT] Next: ${NEXT_ACTOR[to]}`);
+  let cfg = null;
+  try {
+    cfg = loadProject(root);
+  } catch {
+    /* the hint falls back to the default phrases */
+  }
+  const stage = stageOf(task);
+  if (stage.badge) console.log(`[SAT] Stage for the owner: ${stage.badge}`);
+  console.log(`[SAT] Next: ${nextText(cfg, to)}`);
 }
 
 function escalate(root, task, reason) {
@@ -186,7 +207,7 @@ function cmdNew(root, cfg, pos, opts) {
     console.log('[SAT] Next: REQUEST.md is ready — run phase next.');
     return;
   }
-  console.log(`[SAT] Next: ${NEXT_ACTOR.INTAKE}`);
+  console.log(`[SAT] Next: ${nextText(cfg, 'INTAKE')}`);
 }
 
 function cmdStatus(root, cfg, opts) {
@@ -207,7 +228,11 @@ function cmdStatus(root, cfg, opts) {
         verify_failures: `${task.verify_failures}/${effectiveLimit(cfg, task, 'verify_failures')}`,
         interpret_round: `${task.interpret_round}/${effectiveLimit(cfg, task, 'question_rounds')}`,
         last_verify: task.last_verify,
-        next: NEXT_ACTOR[task.phase],
+        started: hasStarted(task),
+        stage: stageOf(task).badge,
+        audience: cfg.owner.audience,
+        required_reply: GATE_PHRASE[task.phase] ? cfg.gates.phrases[GATE_PHRASE[task.phase]] : null,
+        next: nextText(cfg, task.phase),
       }
     : { active_task: null, last_task: st ? st.last_task || null : null };
   if (opts.json) console.log(JSON.stringify(out, null, 2));
@@ -288,7 +313,7 @@ function cmdNext(root, cfg) {
       if (error) fail(`The light path needs TASKS.json: ${error}`);
       const errs = validateTasks(value, task.id);
       if (errs.length) fail(errs.join('\n'));
-      return transition(root, task, 'IMPLEMENT');
+      return transition(root, task, 'GATE_1');
     }
     case 'DESIGN': {
       if (task.cr) {
@@ -350,6 +375,10 @@ function cmdNext(root, cfg) {
         errs.push(...validateAudit(aud.value));
         findings = findings.concat(aud.value.findings || []);
       }
+      if (cfg.owner.audience === 'simple')
+        for (const f of findings)
+          if (['critical', 'high', 'medium'].includes(f.severity) && !(typeof f.plain === 'string' && f.plain.trim()))
+            errs.push(`${f.id}: "plain" is required (owner.audience is simple): one sentence a non-programmer understands — what could happen, to whom.`);
       if (errs.length) fail(errs.join('\n'));
       const blocking = findings.filter(isBlocking);
       if (blocking.length) {
@@ -380,12 +409,20 @@ function cmdNext(root, cfg) {
 function cmdApprove(root, cfg, pos, opts) {
   const task = requireActive(root);
   const gate = pos[0];
-  if (!GATES.includes(gate)) fail('approve needs a gate: GATE_0, GATE_1, GATE_2 or GATE_A');
+  if (!GATES.includes(gate)) fail(`approve needs a gate: ${GATES.join(', ')}`);
   if (task.phase !== gate) fail(`The task is in ${task.phase}, not ${gate}.`);
   const decision = opts.decision || 'approve';
   if (!['approve', 'changes', 'cancel'].includes(decision)) fail('--decision: approve | changes | cancel');
   const note = typeof opts.note === 'string' ? opts.note.trim() : '';
   if (note.length < 2) fail('--note is required: quote the owner\'s decision verbatim.');
+  // An approval is the owner's exact phrase, never a paraphrase: "ok", "تمام", or the plan's phrase at the
+  // start gate are not approvals (charter §6.2). Nothing is recorded when the reply does not match.
+  const key = GATE_PHRASE[gate];
+  if (decision === 'approve' && key && !phraseMatches(note, cfg.gates.phrases[key]))
+    fail(
+      `This reply does not approve ${gate}. The owner must reply exactly: «${cfg.gates.phrases[key]}». Nothing was recorded; the task stays in ${gate}.` +
+        (gate === 'GATE_START' ? ' Approving the plan is not permission to start.' : ''),
+    );
   const dir = taskDir(root, task.id);
   task.gates[gate] = [...(task.gates[gate] || []), { decision, note, at: new Date().toISOString(), mode: cfg.gates.approval }];
   if (decision === 'cancel') return transition(root, task, 'CANCELLED', { gate, note });
@@ -404,15 +441,21 @@ function cmdApprove(root, cfg, pos, opts) {
     task.interpret_round += 1;
     return transition(root, task, 'INTERPRET', { gate, note });
   }
+  const backToPlan = task.path === 'light' ? 'INTERPRET' : 'DESIGN';
   if (gate === 'GATE_1') {
-    if (decision === 'changes') return transition(root, task, 'DESIGN', { gate, note });
+    if (decision === 'changes') return transition(root, task, backToPlan, { gate, note });
     const { value, error } = readJSONFile(join(dir, 'TASKS.json'));
     if (error) fail(`TASKS.json: ${error}`);
     const errs = validateTasks(value, task.id);
     if (value && value.path !== task.path) errs.push(`TASKS.json: path (${value.path}) does not match the task path (${task.path})`);
     if (errs.length) fail(errs.join('\n'));
     task.cr = null;
-    return transition(root, task, 'TESTS', { gate, note });
+    return transition(root, task, 'GATE_START', { gate, note });
+  }
+  if (gate === 'GATE_START') {
+    if (decision === 'changes') return transition(root, task, backToPlan, { gate, note });
+    task.started = { at: new Date().toISOString(), note };
+    return transition(root, task, task.path === 'light' ? 'IMPLEMENT' : 'TESTS', { gate, note });
   }
   // GATE_2
   if (decision === 'changes') {
@@ -440,6 +483,8 @@ function cmdResume(root, cfg, opts) {
   const to = opts.to;
   const allowed = task.kind === 'audit' ? AUDIT_PHASES.filter((p) => p !== 'GATE_A') : ['INTERPRET', 'DESIGN', 'TESTS', 'IMPLEMENT', 'FIX', 'REVIEW', 'REPORT'];
   if (!allowed.includes(to)) fail(`--to must be one of: ${allowed.join(', ')}`);
+  if (['TESTS', 'IMPLEMENT', 'FIX', 'REVIEW', 'REPORT'].includes(to) && !hasStarted(task))
+    fail(`${to} changes the project, and the owner has not given start permission yet. Resume to ${task.path === 'light' ? 'INTERPRET' : 'INTERPRET or DESIGN'}; the start gate comes after the plan.`);
   const note = typeof opts.note === 'string' ? opts.note.trim() : '';
   if (note.length < 2) fail('--note is required: the owner\'s decision verbatim.');
   task.granted = task.granted || {};

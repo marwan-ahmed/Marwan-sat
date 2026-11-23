@@ -18,6 +18,7 @@
       "scenario": "<بالعربية: مدخلات محددة تكسر السلوك والنتيجة الخاطئة>",
       "evidence": "<failing test name, or .team/tasks/<id>/review/<script> + its output>",
       "fix": "<بالعربية: التعديل المطلوب>",
+      "plain": "<جملة واحدة لصاحب القرار بلا مصطلحات: ماذا قد يحدث ولمن>",
       "trace": ["AC-4", "R3"]
     }
   ]
