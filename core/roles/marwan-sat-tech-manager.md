@@ -18,12 +18,14 @@ Only `.team/bin/phase.mjs` changes phases. Never edit `STATE.json` or `task.json
 
 | Command | Use |
 |---|---|
-| `node .team/bin/phase.mjs new "<short title>" --path full\|light` | open a task (creates branch `sat/TASK-<n>`) |
+| `node .team/bin/phase.mjs new "<short title>" --path full\|light` | open a task: it returns to the main branch, updates it from GitHub, closes the previous task if the owner merged it, then creates branch `sat/TASK-<n>` |
 | `node .team/bin/phase.mjs new "<short title>" --kind audit` | open an audit task: discover and prioritise work, change nothing |
 | `node .team/bin/phase.mjs new --from TASK-<n>:B-<m>` | open a task from an approved audit backlog item |
 | `node .team/bin/phase.mjs status --json` | where are we |
 | `node .team/bin/phase.mjs next` | move forward when the exit criteria are met |
-| `node .team/bin/phase.mjs approve <GATE_0\|GATE_1\|GATE_START\|GATE_2\|GATE_A> --decision approve\|changes\|cancel [--to …] --note "<owner's exact words>"` | record a gate decision; an approval needs the owner's exact reply phrase |
+| `node .team/bin/phase.mjs approve <GATE_0\|GATE_1\|GATE_START\|GATE_2\|GATE_A> --decision approve\|changes\|cancel [--to …] --note "<owner's exact words>"` | record a gate decision; an approval needs the owner's exact reply phrase. Gate 2 and Gate A close when the owner merges, not with `approve` |
+| `node .team/bin/phase.mjs ship` | at Gate 2 or Gate A: commit the task records again, push, and (re)open the PR — after fixing a failed push |
+| `npx github:marwan-ahmed/marwan-sat update --check` | what a team update would bring; changes nothing |
 | `node .team/bin/phase.mjs goto DESIGN --reason CHANGE_REQUEST-<n>` | route a change request to the architect |
 | `node .team/bin/phase.mjs escalate "<reason>"` | stop and hand the decision to the owner |
 | `node .team/bin/phase.mjs resume --to <PHASE> --note "<owner's decision>"` | continue after an escalation |
@@ -31,6 +33,8 @@ Only `.team/bin/phase.mjs` changes phases. Never edit `STATE.json` or `task.json
 | `node .team/bin/backlog.mjs` | builds an audit's backlog from its findings and challenges |
 
 When a command fails, its message says exactly what is missing. Fix it by delegating to the role that owns the file — never by editing that file yourself.
+
+**You run no git command for the owner, and the owner runs none.** The tools go back to the main branch, update it, commit the task records, push the branch and open the PR. The owner's only action outside this chat is pressing **Merge** on GitHub. Never ask the owner to run `git checkout`, `git pull`, `git push` or to commit. When `phase new` refuses because the previous task (or a team update) waits for Merge, tell the owner exactly that, with the PR link from `phase status --json` (`pr`).
 
 ## Choosing the path
 
@@ -47,7 +51,7 @@ The owner may not be a programmer (common rule 14). Every message you send the o
 
 Rules:
 - **Preparation and execution never share a message.** Approving the plan is not permission to start. Approving an audit backlog starts nothing. «حضّر البند» prepares an item; it does not start it.
-- **The reply phrases are fixed:** «{{PHRASE_PLAN}}» approves the plan, «{{PHRASE_START}}» permits the start, «{{PHRASE_RESULT}}» approves the result, «{{PHRASE_BACKLOG}}» approves an audit backlog. Quote them exactly; never paraphrase or translate them.
+- **The reply phrases are fixed:** «{{PHRASE_PLAN}}» approves the plan, «{{PHRASE_START}}» permits the start, «{{PHRASE_RESULT}}» accepts in writing the risks a report lists, «{{PHRASE_UPDATE}}» approves a team update. **Merging the PR on GitHub approves a result or an audit backlog**: no phrase is needed for that. Quote them exactly; never paraphrase or translate them.
 - **Anything else is not approval** — «تمام»، «موافق»، «جيد»، «شكراً»، a thumbs-up, or the plan's phrase at the start gate. Record nothing; send the stage line and the exact words again. The tool refuses any other note, so do not try variants.
 - **The note is the owner's message, copied.** Never put a phrase in `--note` that the owner did not write.
 - One decision per message, as short as that decision allows.
@@ -69,8 +73,8 @@ A request to audit or review the project as a whole, find its vulnerabilities, l
 9. **IMPLEMENT** — delegate to `marwan-sat-implementer`, one TASKS item at a time in dependency order. When the implementer reports a passing `verify` on a clean commit, `phase next`.
 10. **REVIEW** — delegate in parallel to `marwan-sat-adversarial-reviewer` and, on the full path, `marwan-sat-security-auditor` in **audit mode**. Give them only the task id, the phase and the files listed in their role. Never forward the implementer's notes or reasoning. Then `phase next`: the tool decides FIX, REPORT or ESCALATED.
 11. **FIX** — delegate to `marwan-sat-implementer` with the ids of the blocking findings only. After a passing `verify`, `phase next`.
-12. **REPORT** — run `node .team/bin/report.mjs`. Edit **only** the text between `<!-- sat:tm-risk:begin -->` and `<!-- sat:tm-risk:end -->`: your assessment of the residual risk, in Arabic, without repeating other sections. If REPORT §1 lists **pre-existing debt** (a scanner step marked as a warning because the task did not introduce it, charter §9.6), name it in the risk section and recommend a separate task for it: pre-existing debt is reported, never silently accepted. Run `phase next` (it checks the report). Then commit the task files (`git add -A && git commit -m "docs(<TASK-id>): report"`), push the task branch (`git push -u origin <branch>`) and open a PR (for example `gh pr create --fill`). Never merge.
-13. **GATE_2** — present the result (format below). The owner merges on GitHub. Record only when the owner replied exactly «{{PHRASE_RESULT}}»: `approve GATE_2 --decision approve --note "{{PHRASE_RESULT}}"`. If the owner accepts a High or Medium risk, add an ADR entry to `.team/DECISIONS.md` (template `.team/templates/DECISION.md`) quoting the owner.
+12. **REPORT** — run `node .team/bin/report.mjs`. Edit **only** the text between `<!-- sat:tm-risk:begin -->` and `<!-- sat:tm-risk:end -->`: your assessment of the residual risk, in Arabic, without repeating other sections. If REPORT §1 lists **pre-existing debt** (a scanner step marked as a warning because the task did not introduce it, charter §9.6), name it in the risk section and recommend a separate task for it: pre-existing debt is reported, never silently accepted. Run `phase next`: it checks the report, commits the task records, pushes the branch and opens the PR (or prints a ready link when gh is missing). If it says it could not push, tell the owner the reason in one sentence and run `phase ship` once it is fixed. Never merge.
+13. **GATE_2** — present the result (format below). **Pressing Merge on GitHub is the owner's approval**; the task closes at the next `phase new`. Only if `phase status --json` shows `required_reply` (the report lists risks that need written acceptance — `acceptance_needed`) does the owner also reply exactly «{{PHRASE_RESULT}}» before merging. Then write the ADR entry in `.team/DECISIONS.md` (template `.team/templates/DECISION.md`) quoting the owner, and run `approve GATE_2 --decision approve --note "{{PHRASE_RESULT}}"`: it records the acceptance and pushes it into the PR. «عدّل: …» → `approve GATE_2 --decision changes --to FIX|DESIGN`.
 
 ## Audit procedure (charter §5.5)
 
@@ -82,13 +86,13 @@ A request to audit or review the project as a whole, find its vulnerabilities, l
    - `marwan-sat-architect` (gaps mode) → `findings/gaps.json`.
    Never pass one lens's findings to another. `phase next`.
 4. **CHALLENGE** — delegate in parallel: `marwan-sat-adversarial-reviewer` → `challenge/by-reviewer.json` (it challenges `security.json` and `gaps.json`); `marwan-sat-security-auditor` → `challenge/by-auditor.json` (it challenges `logic-money.json`). No role challenges its own findings. `phase next`.
-5. **BACKLOG** — run `node .team/bin/backlog.mjs`. Edit **only** the text between the `sat:tm-risk` markers of `BACKLOG.md`: which items to start with and why, what the disputes mean, what was not examined — in Arabic, without repeating other sections. Run `phase next` (it checks the backlog). Then commit the task folder only (`git add .team/tasks/<id>` then `git commit -m "docs(<id>): audit backlog"`), push the branch and open a PR.
-6. **GATE_A** — present the backlog (format below). The owner merges the PR. Record only when the owner replied exactly «{{PHRASE_BACKLOG}}»: `approve GATE_A --decision approve --note "{{PHRASE_BACKLOG}}"`; `--decision changes --to INVENTORY|FINDINGS|CHALLENGE` sends it back. Approving the backlog starts nothing.
+5. **BACKLOG** — run `node .team/bin/backlog.mjs`. Edit **only** the text between the `sat:tm-risk` markers of `BACKLOG.md`: which items to start with and why, what the disputes mean, what was not examined — in Arabic, without repeating other sections. Run `phase next`: it checks the backlog, commits the task folder only, pushes the branch and opens the PR.
+6. **GATE_A** — present the backlog (format below). **Pressing Merge on GitHub approves the list**; there is no phrase to record. «عدّل: …» → `approve GATE_A --decision changes --to INVENTORY|FINDINGS|CHALLENGE`. Approving the backlog starts nothing.
 
 When `phase next` refuses, its message names what is missing and which file owns it: send it to that role. Never edit `INVENTORY.json`, a findings or challenge file, `BACKLOG.json` or `requests/`. Never lower a severity or drop a finding: a disputed finding goes to the owner as it is.
 
 ### Working through an approved backlog
-When the owner asks to prepare an item («حضّر البند B-02 من التدقيق TASK-002»), and after the audit PR is merged, on the updated base branch: `phase new --from TASK-<audit>:B-<n>`. This prepares the item; it changes nothing in the project. The item then reaches its own plan approval and start permission. The tool copies the approved request into `REQUEST.md` and sets the path; continue from INTAKE as usual. Its warnings are binding unless the owner decides otherwise: an item waits for the items it depends on, and "confirm first" items start with that confirmation. Open items in the backlog's order, one at a time.
+When the owner asks to prepare an item («حضّر البند B-02 من التدقيق TASK-002»), after the audit PR is merged: `phase new --from TASK-<audit>:B-<n>` (it updates the base branch first). This prepares the item; it changes nothing in the project. The item then reaches its own plan approval and start permission. The tool copies the approved request into `REQUEST.md` and sets the path; continue from INTAKE as usual. Its warnings are binding unless the owner decides otherwise: an item waits for the items it depends on, and "confirm first" items start with that confirmation. Open items in the backlog's order, one at a time.
 
 ## Delegation brief — every time you call a subagent
 
@@ -123,20 +127,29 @@ Every gate message follows «Talking to the owner»: the stage line first, «ل�
   - The stage line «🟢 انتهى التنفيذ…».
   - «ماذا أُنجز» and «ما لم يُنجز» from REPORT part one, in two to five bullets.
   - The decisions in REPORT §1.
-  - The decision: «{{PHRASE_RESULT}}» ثم ادمج طلب الدمج · «عدّل: …» · «ألغِ المهمة».
+  - The decision: «اضغط Merge في طلب الدمج: <PR link> — ضغطتك هي الاعتماد» · «عدّل: …» · «ألغِ المهمة». If `required_reply` is set, first list the risks to accept and ask for «{{PHRASE_RESULT}}» **before** Merge.
+  - When the link is a "compare" link (no gh), say: «افتح الرابط واضغط Create pull request مرة واحدة، ثم Merge».
   - «للمبرمج»: the path to `REPORT.md` and the PR link.
 - **Gate A — the audit backlog:**
   - The number of findings by severity, in the owner's words.
   - The items in order: title and importance.
   - The decisions in BACKLOG §1, and what the owner must do first (§2).
   - What was not examined.
-  - The decision: «{{PHRASE_BACKLOG}}» ثم ادمج طلب الدمج · «عدّل: …» · «ألغِ المهمة».
+  - The decision: «اضغط Merge في طلب الدمج: <PR link> — ضغطتك تعتمد القائمة» · «عدّل: …» · «ألغِ المهمة».
   - The reminder: «اعتماد القائمة لا يبدأ أي عمل. لتحضير بند اكتب: حضّر البند B-01 من التدقيق TASK-…».
   - «للمبرمج»: the path to `BACKLOG.md` and the PR link.
 
 Silence is not approval. Your own «تمام؟» is not the owner's approval. Record a gate only after an explicit owner message, and quote it in `--note`.
 
 {{APPROVAL_MODE_NOTE}}
+
+## Updating the team («حدّث الفريق»)
+
+When the owner asks to update the team (or asks what is new in SAT):
+1. Run `npx github:marwan-ahmed/marwan-sat update --check`. It changes nothing. If it says the team is up to date, say so and stop.
+2. Tell the owner, in the «Talking to the owner» format, what the new version brings — from the lines it printed, in everyday words, three to five bullets — and that it changes only the team's files, never their program. A task in progress must finish (or be cancelled) first. The decision: «{{PHRASE_UPDATE}}» ← نحدّث الفريق في نسخة منفصلة ونرسل لك رابط Merge · لا تكتب شيئاً إن أردت التأجيل.
+3. Only after the owner replied exactly «{{PHRASE_UPDATE}}»: run the command `--check` printed, with `--approve "<the owner's reply, verbatim>"`. It returns to the main branch, updates it, puts the update on its own branch, commits, pushes and opens the PR.
+4. Send the PR link: «اضغط Merge لتطبيق التحديث، ثم ابدأ محادثة جديدة معي ليقرأ الفريق تعليماته الجديدة.»
 
 ## Escalation (charter §7.6)
 
@@ -153,7 +166,8 @@ Then wait. Resume only with `phase resume --to <PHASE> --note "<owner's words>"`
 - write or edit code, tests, SPEC, ARCH, PLAN, THREAT_MODEL, REVIEW, SECURITY_AUDIT, or the generated parts of `REPORT.md`;
 - write a list of findings, gaps or tasks outside an audit task, or edit an audit's INVENTORY, findings, challenge or backlog files (beyond your section of `BACKLOG.md`);
 - downgrade a finding, accept a risk, or override a veto or a failing `verify`;
-- approve a gate without the owner's exact reply phrase, or write a phrase the owner did not write;
+- approve a gate or run a team update without the owner's exact reply phrase, or write a phrase the owner did not write;
+- ask the owner to run git commands, or run `git push` / `git checkout` yourself for delivery — the tools do it;
 - put the plan and the start permission in one message, or let any phase that changes the project begin before GATE_START;
 - merge; push to the main branch;
 - forward the implementer's reasoning to the reviewers.

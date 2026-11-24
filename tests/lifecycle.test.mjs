@@ -40,22 +40,34 @@ test('full path: from request to closed, with a fix cycle', () => {
   rep = rep.replace(/(<!-- sat:tm-risk:begin -->)[\s\S]*?(<!-- sat:tm-risk:end -->)/, '$1\nالمخاطرة المتبقية منخفضة ومحصورة في دالة صافية.\n$2');
   write(root, `${T}/REPORT.md`, rep);
   assert.equal(phase(root, 'next').code, 0);
-  assert.equal(phase(root, 'approve', 'GATE_2', '--decision', 'approve', '--note', 'اعتمدت').code === 0, false, 'a paraphrase is not an approval');
   assert.equal(task(root).phase, 'GATE_2');
-  assert.equal(phase(root, 'approve', 'GATE_2', '--decision', 'approve', '--note', 'اعتمد النتيجة').code, 0);
-  assert.equal(task(root).phase, 'CLOSED');
+  assert.equal(git(root, 'status', '--porcelain', '--', '.team/tasks'), '', 'the tool committed the task records at Gate 2');
+  assert.equal(git(root, 'log', '-1', '--format=%s'), 'sat(TASK-001): report');
 
-  // The next task must not start from the previous task's branch, and never reuses its id
-  // (here the base branch has no TASK-001 folder, as after a cancelled, never-merged task).
-  git(root, 'add', '-A');
-  git(root, 'commit', '-qm', 'task files');
-  const base = task(root).base_ref;
-  const again = phase(root, 'new', 'مهمة ثانية');
-  assert.notEqual(again.code, 0);
-  assert.match(again.out, /previous task's branch/);
-  git(root, 'checkout', '-q', base);
-  assert.equal(phase(root, 'new', 'مهمة ثانية').code, 0);
+  // Merging is the approval: no phrase is required, and nothing new starts before the merge.
+  const st = JSON.parse(phase(root, 'status', '--json').stdout);
+  assert.equal(st.owner_action, 'merge');
+  assert.equal(st.required_reply, null, 'nothing in the report needs written acceptance');
+  assert.equal(st.merged, false);
+  assert.notEqual(phase(root, 'approve', 'GATE_2', '--decision', 'approve', '--note', 'اعتمدت').code, 0, 'a paraphrase is not an approval');
+  const waiting = phase(root, 'new', 'مهمة ثانية');
+  assert.notEqual(waiting.code, 0);
+  assert.match(waiting.out, /waiting for the owner to press Merge/);
+
+  // The owner merges (here: locally, as GitHub would). The next task closes TASK-001 and starts from the updated base.
+  const branch = task(root).branch;
+  git(root, 'checkout', '-q', 'main');
+  git(root, 'merge', '-q', '--no-ff', '-m', 'Merge TASK-001', branch);
+  git(root, 'checkout', '-q', branch);
+  const next = phase(root, 'new', 'مهمة ثانية');
+  assert.equal(next.code, 0, next.out);
+  assert.match(next.out, /TASK-001 closed: the owner merged it/);
   assert.equal(git(root, 'rev-parse', '--abbrev-ref', 'HEAD').trim(), 'sat/TASK-002');
+  const closed = task(root, 'TASK-001');
+  assert.equal(closed.phase, 'CLOSED');
+  assert.equal(closed.gates.GATE_2.at(-1).via, 'merge');
+  assert.equal(git(root, 'log', '-1', '--format=%s'), 'sat: close TASK-001 (merged on GitHub)', 'the closing record travels with the next branch');
+  assert.equal(task(root, 'TASK-002').base_sha, git(root, 'rev-parse', 'HEAD'), 'the closing record is not counted as the new task\'s change');
 });
 
 test('gates: GATE_0 needs the owner answers; GATE_1 needs a valid TASKS.json', () => {

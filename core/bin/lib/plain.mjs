@@ -15,7 +15,8 @@ export const DEFAULT_PHRASES = {
   plan: 'اعتمد الخطة',
   start: 'ابدأ التنفيذ',
   result: 'اعتمد النتيجة',
-  backlog: 'اعتمد القائمة',
+  backlog: 'اعتمد القائمة', // no longer approves anything: Gate A closes when the owner merges (0.5.0); kept so older project.yaml files stay valid
+  update: 'نفّذ التحديث', // approves a team update (sat update --approve), not a gate
 };
 
 // Which phrase approves which gate. Gate 0 is answered with the owner's own answers, not with a phrase.

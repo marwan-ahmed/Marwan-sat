@@ -714,7 +714,7 @@ export function renderRequest(item, { auditId, environment }) {
   return `${L.join('\n')}\n`;
 }
 
-export function renderBacklog(b, { auditId, title, head, tmBegin, tmPlaceholder, tmEnd, audience = 'simple', phrase = 'اعتمد القائمة', badge = '' }) {
+export function renderBacklog(b, { auditId, title, head, tmBegin, tmPlaceholder, tmEnd, audience = 'simple', badge = '' }) {
   const lb = labels(audience);
   const WHO = { reviewer: 'المراجع المعادي', auditor: 'المدقق الأمني' };
   const plainOf = (x) => x.plain || x.title;
@@ -725,7 +725,7 @@ export function renderBacklog(b, { auditId, title, head, tmBegin, tmPlaceholder,
 
   L.push('# الجزء الأول: لك', '');
   L.push('## 1. القرار المطلوب منك');
-  L.push(`- **للاعتماد** اكتب حرفياً: «${phrase}»، ثم ${lb.simple ? 'ادمج طلب الدمج الخاص بهذا التدقيق على GitHub' : 'ادمج PR هذا التدقيق'}. **لطلب تعديل:** «عدّل: …». **وللإلغاء:** «ألغِ المهمة».`);
+  L.push(`- **للاعتماد** اضغط **Merge** في ${lb.simple ? 'طلب الدمج الخاص بهذا التدقيق على GitHub (رابطه في رسالة المدير التقني)' : 'PR هذا التدقيق'}: ضغطتك هي اعتماد القائمة، ولا تحتاج إلى كتابة شيء. **لطلب تعديل:** «عدّل: …». **وللإلغاء:** «ألغِ المهمة».`);
   L.push('- **اعتماد القائمة لا يبدأ أي عمل في برنامجك.** كل بند يُحضَّر لاحقاً حين تطلبه، ثم يمر ببوابتين منفصلتين: «اعتماد الخطة» ثم «إذن البدء».');
   for (const d of b.disputed)
     L.push(`- **نتيجة مختلف عليها** (${d.id}): ${plainOf(d)} — يرى ${WHO[d.by] || d.by}: ${d.reason}${d.proposed_severity ? ` (يقترح «${lb.sev(d.proposed_severity)}» بدل «${lb.sev(d.severity)}»)` : ''}. أنت وحدك تملك تخفيف الدرجة، ودون قرارك تبقى كما هي.`);

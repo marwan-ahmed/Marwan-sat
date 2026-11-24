@@ -13,7 +13,7 @@
 //   - Merging stays with the owner: no push to the base branch (by any refspec, or a bare push from it),
 //     no `gh pr merge`, no merge through the GitHub API. Agents act with the owner's GitHub identity.
 // Limitation (documented): a shell command can still write files. verify.mjs and CI catch that.
-import { existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +36,22 @@ const DANGEROUS = [
   [/\bgit\s+(commit|push)\b[^\n]*--no-verify\b/, '--no-verify is blocked'],
   [/\bgit\s+config\b[^\n]*\bcore\.hooksPath\b/, 'Changing the git hooks path is blocked'],
 ];
+
+const DELEGATE_TOOLS = /^(invoke_subagent)$/;
+
+// Evidence that a subagent was actually started (charter §15.1): the hook sees the tech manager's call, so the
+// record comes from Antigravity, not from an agent's account of its work. Local only (evidence/ is not committed).
+// Only the call's short string arguments are kept — the agent name and the brief's first words — never files.
+function recordDelegation(root, payload, args) {
+  try {
+    const short = Object.fromEntries(Object.entries(args).filter(([, v]) => typeof v === 'string').map(([k, v]) => [k, v.slice(0, 160)]));
+    const dir = join(root, '.team', 'evidence');
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(join(dir, 'delegations.jsonl'), `${JSON.stringify({ ts: new Date().toISOString(), conversation: payload.conversationId || null, model: payload.modelName || null, args: short })}\n`, 'utf8');
+  } catch {
+    /* evidence is best effort: it never blocks the call */
+  }
+}
 
 const MERGE_DENIED = "Merging into the base branch is the owner's decision: the owner presses Merge on GitHub";
 const escapeRx = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -88,6 +104,7 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
   } catch (e) {
     return { decision: 'ask', reason: `project.yaml is invalid: ${e.message}` };
   }
+  if (DELEGATE_TOOLS.test(tool)) recordDelegation(root, payload, args);
   const state = readJSON(statePath(root), null);
   const task = state && state.active_task ? readJSON(join(taskDir(root, state.active_task), 'task.json'), null) : null;
   const phase = task ? task.phase : null;
@@ -98,8 +115,8 @@ export function decide(payload, { cwd = process.cwd() } = {}) {
     // A push that does not name the task branch, run while the base branch is checked out, would update the base branch.
     if (/\bgit\s+push\b/.test(cmd) && !cmd.includes(cfg.git.task_branch_prefix) && [cfg.git.base_branch, 'main', 'master'].includes(currentBranch(root)))
       return { decision: 'deny', reason: `You are on the base branch: push the task branch by name (${cfg.git.task_branch_prefix}TASK-<n>)` };
-    if (cfg.gates.approval === 'owner' && /phase(\.mjs)?\s+(approve|resume)\b/.test(cmd))
-      return { decision: 'deny', reason: 'Gate approvals and task resumes are run by the owner personally (gates.approval = owner)' };
+    if (cfg.gates.approval === 'owner' && (/phase(\.mjs)?\s+(approve|resume)\b/.test(cmd) || /\bupdate\b[^\n]*--approve\b/.test(cmd)))
+      return { decision: 'deny', reason: 'Gate approvals, task resumes and team updates are run by the owner personally (gates.approval = owner)' };
     if (['REVIEW', 'FINDINGS', 'CHALLENGE'].includes(phase)) {
       const hosts = [...cmd.matchAll(/\bhttps?:\/\/([^/\s:'"]+)/gi)].map((m) => m[1].toLowerCase());
       const external = hosts.filter((h) => !['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]'].includes(h));
