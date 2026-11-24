@@ -83,7 +83,7 @@ export function generate({ satRoot, cfg, root }) {
 
   const approvalNote =
     cfg.gates.approval === 'owner'
-      ? 'Gate approvals are configured as **owner**: ask the owner to run the `approve` / `resume` command in a terminal. The guard blocks you from running it.'
+      ? 'Gate approvals are configured as **owner**: ask the owner to run the `approve` / `resume` command, and a team update\'s `update --approve` command, in a terminal. The guard blocks you from running them.'
       : 'Gate approvals are configured as **agent**: you run the `approve` command, and only right after an explicit owner message that you quote in `--note`.';
   const testGlobs = cfg.paths.tests.map((g) => `\`${g}\``).join(', ');
   const phrases = cfg.gates.phrases;
@@ -101,7 +101,8 @@ export function generate({ satRoot, cfg, root }) {
       .replace(/\{\{PHRASE_PLAN\}\}/g, () => phrases.plan)
       .replace(/\{\{PHRASE_START\}\}/g, () => phrases.start)
       .replace(/\{\{PHRASE_RESULT\}\}/g, () => phrases.result)
-      .replace(/\{\{PHRASE_BACKLOG\}\}/g, () => phrases.backlog);
+      .replace(/\{\{PHRASE_BACKLOG\}\}/g, () => phrases.backlog)
+      .replace(/\{\{PHRASE_UPDATE\}\}/g, () => phrases.update);
 
   for (const role of rolesOf(satRoot)) {
     const toolNames = [...new Set((role.capabilities || []).flatMap((c) => tools.capabilities[c] || []))];

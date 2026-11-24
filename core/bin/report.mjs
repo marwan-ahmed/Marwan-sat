@@ -8,7 +8,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { findRoot, loadProject } from './lib/config.mjs';
-import { extractIds, isBlocking, readJSONFile, readText } from './lib/contracts.mjs';
+import { acceptanceItems, extractIds, isBlocking, readJSONFile, readText } from './lib/contracts.mjs';
 import { effectiveBase, git } from './lib/git.mjs';
 import { commandExists } from './lib/proc.mjs';
 import { reportHash, TM_BEGIN, TM_END, TM_PLACEHOLDER } from './lib/report-hash.mjs';
@@ -73,7 +73,14 @@ function main() {
 
   // Decisions required (part one).
   const decisions = [];
-  const verifyOk = vsum && vsum.result === 'pass' && !(vsum.sha && vsum.sha !== head);
+  // Commits after the verified one that only carry the task's records (the report, the ledger, decisions) do
+  // not change the program, so they do not invalidate the check.
+  const recordsOnly = (from) => {
+    const names = git(['diff', '--name-only', from, 'HEAD'], root, { allowFail: true });
+    return names !== null && names.split('\n').filter(Boolean).every((f) => f.startsWith(`.team/tasks/${task.id}/`) || ['.team/LEDGER.jsonl', '.team/DECISIONS.md'].includes(f));
+  };
+  const verifyOk = vsum && vsum.result === 'pass' && (!vsum.sha || vsum.sha === head || recordsOnly(vsum.sha));
+  const toAccept = acceptanceItems(review, audit);
   if (!verifyOk)
     decisions.push(lb.simple ? '**لا تدمج الآن:** آخر فحص آلي للبرنامج لم ينجح، أو لم يُشغَّل على النسخة الأخيرة.' : '**لا يجوز الدمج:** آخر تشغيل لـ verify لم ينجح أو لا يطابق HEAD.');
   for (const f of findings.filter((x) => x.severity === 'medium'))
@@ -133,7 +140,10 @@ function main() {
   L.push('');
   L.push('## 1. القرار المطلوب منك');
   for (const d of decisions) L.push(`- ${d}`);
-  L.push(`- **للاعتماد** اكتب حرفياً: «${cfg.gates.phrases.result}»، ثم ادمج ${lb.pr}${pr ? `: ${pr}` : ''}. الدمج بيدك وحدك.`);
+  // Merging is the approval (charter §6). Written words are needed only to accept the risks listed above.
+  if (toAccept.length)
+    L.push(`- **لقبول ما سبق** اكتب حرفياً: «${cfg.gates.phrases.result}»، ثم اضغط **Merge** في ${lb.pr}${pr ? `: ${pr}` : ' (رابطه في رسالة المدير التقني)'}. هنا لا يكفي الدمج وحده: قبولك المكتوب يُسجَّل في سجل المهمة.`);
+  else L.push(`- **للاعتماد** اضغط **Merge** في ${lb.pr}${pr ? `: ${pr}` : ' (رابطه في رسالة المدير التقني)'}. ضغطة Merge هي اعتمادك، ولا تحتاج إلى كتابة شيء. الدمج بيدك وحدك.`);
   L.push('- **لطلب تعديل** اكتب: «عدّل: …» مع ما تريد. **وللإلغاء:** «ألغِ المهمة».');
   L.push('- أي رد غير ذلك لا يُعدّ اعتماداً.');
   L.push('');
@@ -170,7 +180,7 @@ function main() {
   L.push('');
   L.push('# الجزء الثاني: التفاصيل التقنية (للمبرمج)');
   L.push('');
-  L.push(`> المسار: ${task.path === 'full' ? 'كامل' : 'خفيف'} · الفرع: \`${task.branch}\` · HEAD: \`${head.slice(0, 10)}\`${pr ? ` · PR: ${pr}` : ' · PR: لم يُفتح بعد أو أداة gh غير متاحة'}`);
+  L.push(`> المسار: ${task.path === 'full' ? 'كامل' : 'خفيف'} · الفرع: \`${task.branch}\` · HEAD: \`${head.slice(0, 10)}\`${pr ? ` · PR: ${pr}` : ' · PR: يفتحه SAT عند الانتقال إلى البوابة 2'}`);
   L.push('');
   L.push('## 6. الهدف كما صاغه مفسّر الطلب (EXEC_PROMPT §1)');
   L.push(goal);

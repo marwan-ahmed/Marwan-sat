@@ -290,26 +290,29 @@ test('audit lifecycle: inventory → findings → challenge → backlog → gate
   write(root, `${T}/BACKLOG.md`, md.replace(/(<!-- sat:tm-risk:begin -->)[\s\S]*?(<!-- sat:tm-risk:end -->)/, '$1\nأبدأ بـ B-01 ثم B-02: قفل السحب ينتظر تغيير المشغّل.\n$2'));
   assert.equal(phase(root, 'next').code, 0);
   assert.equal(task(root).phase, 'GATE_A');
-  assert.notEqual(phase(root, 'approve', 'GATE_A', '--decision', 'approve', '--note', 'تمام').code, 0, '"ok" is not an approval');
-  assert.equal(phase(root, 'approve', 'GATE_A', '--decision', 'approve', '--note', 'اعتمد القائمة').code, 0);
-  assert.equal(task(root).phase, 'CLOSED');
+  assert.equal(git(root, 'status', '--porcelain', '--', '.team/tasks'), '', 'the tool committed the audit folder at Gate A');
+  // Gate A closes when the owner merges the audit PR: no phrase closes it, and nothing is recorded.
+  const byPhrase = phase(root, 'approve', 'GATE_A', '--decision', 'approve', '--note', 'اعتمد القائمة');
+  assert.notEqual(byPhrase.code, 0);
+  assert.match(byPhrase.out, /merging is the approval/);
+  assert.equal(task(root).phase, 'GATE_A');
+  assert.equal(JSON.parse(phase(root, 'status', '--json').stdout).required_reply, null);
 
-  // After the audit PR is merged, a backlog item opens a task with its request ready.
-  git(root, 'add', '-A');
-  git(root, 'commit', '-qm', 'audit');
+  // After the audit PR is merged, a backlog item opens a task with its request ready, and the audit closes.
   const branch = task(root).branch;
   git(root, 'checkout', '-q', 'main');
   git(root, 'merge', '-q', '--no-ff', '-m', 'merge audit', branch);
   r = phase(root, 'new', '--from', 'TASK-001:B-03', '--path', 'light');
   assert.notEqual(r.code, 0, 'a full-path item cannot be downgraded');
   r = phase(root, 'new', '--from', 'TASK-001:B-03');
-  assert.equal(r.code, 0, r.out);
+  assert.equal(r.code, 0, `NEWFROM ${r.out}`);
   assert.match(r.out, /depends on B-02/);
   assert.match(r.out, /depends on B-01/, 'AGENTS.md is still missing');
   const t2 = task(root, 'TASK-002');
   assert.equal(t2.path, 'full');
   assert.deepEqual(t2.source, { audit: 'TASK-001', item: 'B-03' });
   assert.match(read(root, '.team/tasks/TASK-002/REQUEST.md'), /REV-1/);
+  assert.equal(task(root, 'TASK-001').phase, 'CLOSED', 'the merged audit is closed by the next task');
   assert.equal(phase(root, 'next').code, 0);
   assert.equal(task(root, 'TASK-002').phase, 'INTERPRET');
 

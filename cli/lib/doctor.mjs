@@ -89,11 +89,13 @@ export function doctor({ root, satRoot, run = true }) {
   if (existsSync(agentsDir)) {
     const known = JSON.parse(readFileSync(join(satRoot, 'adapters', 'antigravity', 'tools.json'), 'utf8'));
     const used = new Set();
+    const subagents = [];
     for (const f of readdirSync(agentsDir).filter((n) => n.endsWith('.md'))) {
       const { data } = parseFrontmatter(readFileSync(join(agentsDir, f), 'utf8'));
       for (const t of (data && data.tools) || []) used.add(t);
+      if (data && data.subagent !== false && data.name) subagents.push(String(data.name));
     }
-    const t = toolNamesVerdict(known, used);
+    const t = toolNamesVerdict(known, used, { subagents, seen: delegationsSeen(root, subagents) });
     add(t.level, t.title, t.detail);
   }
   add(existsSync(join(root, '.github', 'workflows', 'sat-verify.yml')) ? 'ok' : 'fail', 'CI workflow: .github/workflows/sat-verify.yml');
@@ -214,7 +216,7 @@ export function protectionVerdict(policy, base, s) {
 
 // Pure: are the tool names used by the generated agents known, and confirmed by a real run in Antigravity?
 // A confirmation is recorded in adapters/antigravity/tools.json only after such a run; it covers the names it lists.
-export function toolNamesVerdict(known, used) {
+export function toolNamesVerdict(known, used, { subagents = [], seen = new Set() } = {}) {
   const title = 'Antigravity tool names';
   const knownNames = new Set(Object.values(known.capabilities || {}).flat());
   const unknown = [...used].filter((t) => !knownNames.has(t));
@@ -222,5 +224,27 @@ export function toolNamesVerdict(known, used) {
   const confirmed = new Set(known.confirmed && Array.isArray(known.confirmed.names) ? known.confirmed.names : []);
   const unconfirmed = [...used].filter((t) => !confirmed.has(t));
   if (!unconfirmed.length) return { level: 'ok', title, detail: `confirmed in a real run on ${known.confirmed.on}; if Antigravity renames a tool, an agent can hang: report it` };
+  // Evidence from this project: Antigravity's own hook recorded the tech manager starting every subagent.
+  if (subagents.length && subagents.every((a) => seen.has(a)))
+    return { level: 'ok', title, detail: `all ${subagents.length} subagents were started in this project (hook evidence: .team/evidence/delegations.jsonl)` };
   return { level: 'warn', title, detail: `${unconfirmed.join(', ')} — documented, but open each agent once in Antigravity to confirm (a wrong name can hang an agent)` };
+}
+
+// Which subagents the hook saw the tech manager start (guard records every invoke_subagent call).
+export function delegationsSeen(root, names) {
+  const seen = new Set();
+  const p = join(root, '.team', 'evidence', 'delegations.jsonl');
+  if (!existsSync(p)) return seen;
+  for (const line of readFileSync(p, 'utf8').split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let e;
+    try {
+      e = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const text = Object.values(e.args || {}).join(' ');
+    for (const n of names) if (new RegExp(`(^|[^a-z0-9-])${n}($|[^a-z0-9-])`).test(text)) seen.add(n);
+  }
+  return seen;
 }

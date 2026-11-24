@@ -104,7 +104,7 @@ Requirements: a clean working tree and no other active task (one task at a time)
 - **Gate 0:** up to 3 blocking questions, if any.
 - **Gate 1:** plan approval. Reply «اعتمد الخطة».
 - **The start permission:** a separate message. Reply «ابدأ التنفيذ». Until then nothing in the project changes.
-- **Gate 2:** report and PR. Reply «اعتمد النتيجة», then merge it yourself. Check progress any time with `node .team/bin/phase.mjs status`.
+- **Gate 2:** report and PR. **Pressing Merge on GitHub is your approval**; you type nothing. Only when the report lists risks that need your written acceptance do you reply «اعتمد النتيجة» before merging. Check progress any time with `node .team/bin/phase.mjs status`.
 
 **Auditing an existing project.** Ask the tech manager for an audit (`Audit: <scope>`). It never answers with a free-form list. It opens an **audit task** (`phase new "<title>" --kind audit`), which changes nothing outside its folder:
 - **INVENTORY:** evidence-backed environment facts, and every entry point with its server-side check.
@@ -112,9 +112,9 @@ Requirements: a clean working tree and no other active task (one task at a time)
 - **CHALLENGE:** every finding is reviewed by a role that did not write it. It checks reachability, whether the fix is right in this environment, the severity, and any external claims.
 - **BACKLOG:** `backlog.mjs` builds small, ordered items from a fixed priority table. Each item has a ready request, with fixes kept apart as non-binding hints.
 
-You approve the backlog at Gate A («اعتمد القائمة») and merge it. Approving the list starts nothing. Each item is then prepared on request with `phase new --from TASK-<n>:B-<m>`, and passes its own plan and start gates. See charter §5.5 and §7.8.
+You approve the backlog at Gate A by merging its PR. Approving the list starts nothing. Each item is then prepared on request with `phase new --from TASK-<n>:B-<m>`, and passes its own plan and start gates. See charter §5.5 and §7.8.
 
-After each merge, run `git checkout main` then `git pull` before the next task. A step-by-step beginner guide (Arabic) is in [docs/ANTIGRAVITY_GUIDE.md](docs/ANTIGRAVITY_GUIDE.md).
+**No git commands for you.** SAT returns to the main branch and updates it, commits the task records, pushes the branch and opens the PR itself; your only action outside the chat is pressing **Merge**. While a task waits for your Merge, no new task starts. To update the team, tell the tech manager «حدّث الفريق»: it shows what is new, and after your exact reply «نفّذ التحديث» it updates on a branch of its own and sends you a Merge link. A step-by-step beginner guide (Arabic) is in [docs/ANTIGRAVITY_GUIDE.md](docs/ANTIGRAVITY_GUIDE.md).
 
 ## Honest limits
 

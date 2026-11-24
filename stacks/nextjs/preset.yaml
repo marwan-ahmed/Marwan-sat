@@ -50,6 +50,7 @@ gates:
     start: "ابدأ التنفيذ"
     result: "اعتمد النتيجة"
     backlog: "اعتمد القائمة"
+    update: "نفّذ التحديث"       # يعتمد تحديث الفريق نفسه (sat update --approve)، لا بوابة مهمة
 
 guard:
   no_task_policy: ask         # ask | allow | deny — الكتابة دون مهمة SAT نشطة

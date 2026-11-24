@@ -153,3 +153,14 @@ export function latestNumbered(dir, prefix) {
     .sort((a, b) => Number(a[1][1]) - Number(b[1][1]));
   return found.length ? join(dir, found[found.length - 1][0]) : null;
 }
+
+// What the owner must accept in writing before merging a task (charter §7.3, §7.4): every Medium finding,
+// every Critical or High that is only suspected (confirmed ones force FIX and never reach Gate 2), and a
+// security audit that could not test everything it should have (INCOMPLETE).
+export function acceptanceItems(review, audit) {
+  const ids = [];
+  for (const x of [...((review && review.findings) || []), ...((audit && audit.findings) || [])])
+    if (x.severity === 'medium' || (['critical', 'high'].includes(x.severity) && x.proof !== 'confirmed')) ids.push(x.id);
+  if (audit && audit.verdict === 'INCOMPLETE') ids.push('SECURITY_AUDIT:INCOMPLETE');
+  return ids;
+}
