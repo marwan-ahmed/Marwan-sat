@@ -9,10 +9,11 @@ export const PLATFORMS = ['antigravity', 'claude-code'];
 export const PROFILES = ['web', 'mobile'];
 export const ATTACK_ENVS = ['neon-branch', 'docker-postgres', 'docker-mysql', 'none'];
 export const SCAN_SCOPES = ['diff', 'full'];
+export const BRANCH_PROTECTION = ['required', 'accepted_risk'];
 export const COMMAND_ORDER = ['install', 'typecheck', 'lint', 'build', 'test'];
 
 export const DEFAULTS = {
-  git: { base_branch: 'main', task_branch_prefix: 'sat/' },
+  git: { base_branch: 'main', task_branch_prefix: 'sat/', branch_protection: 'required' },
   commands: { install: null, typecheck: null, lint: null, build: null, test: null, start: null, extra: [] },
   paths: { tests: [], sensitive_extra: [] },
   security: {
@@ -65,6 +66,7 @@ export function validateProject(cfg) {
   if (!PROFILES.includes(cfg.security.profile)) errors.push(`security.profile: must be one of ${PROFILES.join(', ')}`);
   if (!SCAN_SCOPES.includes(cfg.security.scan_scope)) errors.push(`security.scan_scope: must be one of ${SCAN_SCOPES.join(', ')}`);
   if (!ATTACK_ENVS.includes(cfg.security.attack_env)) errors.push(`security.attack_env: must be one of ${ATTACK_ENVS.join(', ')}`);
+  if (!BRANCH_PROTECTION.includes(cfg.git.branch_protection)) errors.push(`git.branch_protection: must be one of ${BRANCH_PROTECTION.join(', ')}`);
   if (!['agent', 'owner'].includes(cfg.gates.approval)) errors.push('gates.approval: must be "agent" or "owner"');
   if (!cfg.owner || !AUDIENCES.includes(cfg.owner.audience)) errors.push(`owner.audience: must be one of ${AUDIENCES.join(', ')}`);
   const phrases = (cfg.gates && cfg.gates.phrases) || {};

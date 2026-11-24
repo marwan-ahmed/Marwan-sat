@@ -56,7 +56,7 @@
 | **Node.js 20 أو أحدث** (نسخة LTS) | أدوات SAT مكتوبة بـNode | [nodejs.org](https://nodejs.org) | `node -v` |
 | **Git** | SAT يعمل بفروع وcommits | [git-scm.com](https://git-scm.com) | `git --version` |
 | **تطبيق Antigravity** | مكان عمل الوكلاء | [antigravity.google/download](https://antigravity.google/download) | يفتح ويطلب تسجيل الدخول بحساب Google |
-| **GitHub CLI** `gh` (موصى به) | ليفتح المدير التقني طلب الدمج (PR) بنفسه | [cli.github.com](https://cli.github.com) | `gh auth status` |
+| **GitHub CLI** `gh` (مطلوب) | ليتحقق `sat doctor` من حماية الفرع، وليفتح المدير التقني طلب الدمج (PR) بنفسه | [cli.github.com](https://cli.github.com) | `gh auth status` |
 
 **أين أكتب هذه الأوامر؟** في الطرفية (Terminal) بإحدى طريقتين:
 - **في المحرر:** قائمة **Terminal** ← **New Terminal**. تفتح الطرفية داخل مجلد المشروع مباشرة.
@@ -105,7 +105,11 @@ git pull
 
 > **اسم الفرع الرئيسي:** في المستودعات القديمة قد يكون `master` بدل `main`، وأي أمر في هذا الدليل يُكتب باسم فرعك. ولمعرفة الاسم بعد تثبيت SAT، انظر إلى `base_branch` في `.team/project.yaml`.
 
-**موصى به:** فعّل حماية الفرع الرئيسي من إعدادات المستودع على GitHub، واشترط Pull Request قبل الدمج. بهذا لا يستطيع أي وكيل الدفع إلى الفرع الرئيسي مباشرة.
+**مطلوب:** فعّل حماية الفرع الرئيسي من إعدادات المستودع على GitHub: **Settings ← Branches ← Add rule** للفرع `main`، ثم فعّل خيارين:
+- **Require a pull request before merging:** لا يدخل تعديل إلى الفرع الرئيسي إلا عبر طلب دمج.
+- **Do not allow bypassing the above settings:** الوكلاء يعملون بحسابك في GitHub، فإن سمحت الحماية لك بتجاوزها سمحت لهم أيضاً.
+
+> **المستودع الخاص:** حماية الفروع في المستودعات الخاصة ميزة مدفوعة (GitHub Pro أو أعلى). بدونها يقول `sat doctor` «غير جاهز». إن قررت العمل بدونها، فاكتب في `.team/project.yaml` السطر `branch_protection: accepted_risk` تحت `git:`، وسجّل سبب قرارك في `.team/DECISIONS.md`. عندها يبقى الدمج بيدك بالتعليمات و`guard` وحدهما، لا بقيد من GitHub.
 
 ---
 

@@ -122,7 +122,8 @@ function cmdInit(root, opts) {
   console.log('  3) Commit only the SAT files (keep your own changes in a separate commit):');
   console.log(`       git add ${SAT_PATHS.join(' ')}`);
   console.log(`       git commit -m "chore: install Marwan SAT ${version}"`);
-  console.log('  4) Turn on branch protection for the main branch on GitHub.');
+  console.log('  4) Protect the main branch on GitHub: "Require a pull request before merging" and "Do not allow bypassing the above settings"');
+  console.log('     (a private repository needs GitHub Pro). doctor verifies it through gh and is NOT READY until it can.');
   console.log('  5) Start in the Antigravity app: pick the marwan-sat-tech-manager agent (in the model menu) and send "New task: <your request>" (Arabic works too).');
   if (!existsSync(join(root, 'AGENTS.md'))) console.log('  ! No AGENTS.md: consider adding one for project-specific rules (for example from the arabic-agents template).');
 }

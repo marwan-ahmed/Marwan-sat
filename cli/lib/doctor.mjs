@@ -88,14 +88,13 @@ export function doctor({ root, satRoot, run = true }) {
   add(probeFails.length ? 'fail' : 'ok', 'guard works on this machine (live test from the root and from .agents/: it blocks a protected file)', probeFails.length ? `${probeFails.join('; ')} — run: ${satCommand(satRoot, satVersion(satRoot))} update` : '');
   if (existsSync(agentsDir)) {
     const known = JSON.parse(readFileSync(join(satRoot, 'adapters', 'antigravity', 'tools.json'), 'utf8'));
-    const knownNames = new Set(Object.values(known.capabilities).flat());
     const used = new Set();
     for (const f of readdirSync(agentsDir).filter((n) => n.endsWith('.md'))) {
       const { data } = parseFrontmatter(readFileSync(join(agentsDir, f), 'utf8'));
       for (const t of (data && data.tools) || []) used.add(t);
     }
-    const unknown = [...used].filter((t) => !knownNames.has(t));
-    add(unknown.length ? 'fail' : 'warn', 'Antigravity tool names', unknown.length ? `unknown: ${unknown.join(', ')}` : `${[...used].join(', ')} — documented, but open each agent once in Antigravity to confirm (a wrong name can hang an agent)`);
+    const t = toolNamesVerdict(known, used);
+    add(t.level, t.title, t.detail);
   }
   add(existsSync(join(root, '.github', 'workflows', 'sat-verify.yml')) ? 'ok' : 'fail', 'CI workflow: .github/workflows/sat-verify.yml');
 
@@ -144,14 +143,84 @@ export function doctor({ root, satRoot, run = true }) {
   else if (env === 'neon-branch') add(commandExists('neonctl') ? 'ok' : 'warn', 'attack environment: neonctl');
   else if (env.startsWith('docker')) add(commandExists('docker') ? 'ok' : 'warn', 'attack environment: docker');
 
-  if (commandExists('gh')) {
-    const repo = spawnSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { cwd: root, encoding: 'utf8' });
-    if (repo.status === 0 && repo.stdout.trim()) {
-      const name = repo.stdout.trim();
-      const prot = spawnSync('gh', ['api', `repos/${name}/branches/${cfg.git.base_branch}/protection`, '--silent'], { cwd: root, encoding: 'utf8' });
-      add(prot.status === 0 ? 'ok' : 'fail', `Branch protection on ${cfg.git.base_branch}`, prot.status === 0 ? '' : 'off, or not readable with your permissions: turn it on and require your review before merging');
-    } else add('warn', 'GitHub', 'could not read the repository through gh');
-  } else add('warn', 'Branch protection', 'gh is not installed: check the main branch protection by hand');
+  const bp = protectionVerdict(cfg.git.branch_protection, cfg.git.base_branch, readProtection(root, cfg.git.base_branch));
+  add(bp.level, bp.title, bp.detail);
 
   return results;
+}
+
+// Branch protection — the third guarantee (charter §14.2): only the owner merges into the base branch.
+// SAT agents act with the owner's GitHub identity, so a rule the owner can bypass does not stop them:
+// it counts only if it requires a pull request and admins cannot bypass it.
+const PROTECT_HOW = 'GitHub → Settings → Branches → a rule for the base branch with "Require a pull request before merging" and "Do not allow bypassing the above settings"';
+const ACCEPT_HOW = 'or, if you accept the risk, set git.branch_protection: accepted_risk in .team/project.yaml and record why in .team/DECISIONS.md';
+
+// Reads the protection of the base branch through gh. Returns a state for protectionVerdict.
+export function readProtection(root, base) {
+  if (!commandExists('gh')) return { state: 'unverifiable', why: 'GitHub CLI (gh) is not installed, so it cannot be checked: winget install GitHub.cli, then gh auth login' };
+  const gh = (args) => spawnSync('gh', args, { cwd: root, encoding: 'utf8' });
+  const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner']);
+  const name = repo.status === 0 ? repo.stdout.trim() : '';
+  if (!name) return { state: 'unverifiable', why: 'gh could not read this repository (no GitHub remote, or gh is not signed in: gh auth login)' };
+  const branch = encodeURIComponent(base);
+  return interpretProtection(gh(['api', `repos/${name}/branches/${branch}/protection`]), () => gh(['api', `repos/${name}/rules/branches/${branch}`]));
+}
+
+// Pure: classic is the answer of GET …/branches/<base>/protection; rules() fetches GET …/rules/branches/<base>.
+export function interpretProtection(classic, rules) {
+  const text = (r) => `${r.stdout || ''}\n${r.stderr || ''}`;
+  const planBlocked = (r) => /upgrade to github pro|make this repository public/i.test(text(r));
+  if (classic.status === 0) {
+    let p;
+    try {
+      p = JSON.parse(classic.stdout);
+    } catch {
+      return { state: 'unverifiable', why: 'GitHub returned an unreadable answer' };
+    }
+    const missing = [];
+    if (!p.required_pull_request_reviews) missing.push('"Require a pull request before merging"');
+    if (!(p.enforce_admins && p.enforce_admins.enabled)) missing.push('"Do not allow bypassing the above settings"');
+    return missing.length ? { state: 'weak', missing } : { state: 'enforced' };
+  }
+  if (planBlocked(classic)) return { state: 'plan' };
+  if (!/branch not protected|HTTP 404/i.test(text(classic))) return { state: 'unverifiable', why: 'your GitHub account could not read the protection settings' };
+  // No classic rule: the branch may still be protected by a repository ruleset.
+  const r = rules();
+  if (r.status !== 0) return planBlocked(r) ? { state: 'plan' } : { state: 'unverifiable', why: 'the repository rulesets could not be read' };
+  let list = [];
+  try {
+    list = JSON.parse(r.stdout);
+  } catch {
+    return { state: 'unverifiable', why: 'GitHub returned an unreadable answer' };
+  }
+  return Array.isArray(list) && list.some((x) => x && x.type === 'pull_request') ? { state: 'ruleset' } : { state: 'off' };
+}
+
+// Pure: the doctor line for a protection state under the project's policy (git.branch_protection).
+export function protectionVerdict(policy, base, s) {
+  const title = `Branch protection on ${base}`;
+  if (s.state === 'enforced') return { level: 'ok', title, detail: 'a pull request is required and admins cannot bypass it' };
+  if (s.state === 'ruleset') return { level: 'ok', title, detail: 'a ruleset requires a pull request; make sure you are not in its bypass list (SAT agents act with your GitHub identity)' };
+  const why = {
+    weak: `on, but missing ${(s.missing || []).join(' and ')}: SAT agents act with your GitHub identity, so whatever you can bypass, they can too`,
+    off: `off: ${PROTECT_HOW}`,
+    plan: 'GitHub offers it for private repositories on paid plans only (GitHub Pro or higher): upgrade, then turn it on',
+    unverifiable: `not verified: ${s.why}`,
+  }[s.state] || `not verified: ${s.why || s.state}`;
+  if (policy === 'accepted_risk')
+    return { level: 'warn', title, detail: `${why}. Risk accepted in project.yaml (git.branch_protection: accepted_risk): only guard stands between an agent and ${base}, and guard is not a final guarantee` };
+  return { level: 'fail', title, detail: `${why}; ${ACCEPT_HOW}` };
+}
+
+// Pure: are the tool names used by the generated agents known, and confirmed by a real run in Antigravity?
+// A confirmation is recorded in adapters/antigravity/tools.json only after such a run; it covers the names it lists.
+export function toolNamesVerdict(known, used) {
+  const title = 'Antigravity tool names';
+  const knownNames = new Set(Object.values(known.capabilities || {}).flat());
+  const unknown = [...used].filter((t) => !knownNames.has(t));
+  if (unknown.length) return { level: 'fail', title, detail: `unknown: ${unknown.join(', ')}` };
+  const confirmed = new Set(known.confirmed && Array.isArray(known.confirmed.names) ? known.confirmed.names : []);
+  const unconfirmed = [...used].filter((t) => !confirmed.has(t));
+  if (!unconfirmed.length) return { level: 'ok', title, detail: `confirmed in a real run on ${known.confirmed.on}; if Antigravity renames a tool, an agent can hang: report it` };
+  return { level: 'warn', title, detail: `${unconfirmed.join(', ')} — documented, but open each agent once in Antigravity to confirm (a wrong name can hang an agent)` };
 }

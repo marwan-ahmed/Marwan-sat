@@ -100,7 +100,7 @@ There is no terminal command to start a task: the tech manager opens it, records
 New task: <describe what you need, as you would to a human tech lead>
 ```
 
-Requirements: a clean working tree and no other active task (one task at a time). The tech manager comes back to you only at these points:
+Requirements: a clean working tree and no other active task (one task at a time). Before the first task, `sat doctor` must say READY: it verifies through `gh` that the base branch requires a pull request and that admins cannot bypass it (a private repository needs GitHub Pro for this). If you cannot have that, record the accepted risk with `git.branch_protection: accepted_risk` in `.team/project.yaml`. The tech manager comes back to you only at these points:
 - **Gate 0:** up to 3 blocking questions, if any.
 - **Gate 1:** plan approval. Reply «اعتمد الخطة».
 - **The start permission:** a separate message. Reply «ابدأ التنفيذ». Until then nothing in the project changes.
@@ -123,7 +123,8 @@ After each merge, run `git checkout main` then `git pull` before the next task. 
 - Plain language is an instruction to the agents. The tool enforces the structure: the stage line, the exact phrases, the technical section, and a plain sentence per finding.
 - An audit is only as good as what it examined: its backlog lists what was not examined, and suspected findings stay suspected until a task confirms them.
 - The security auditor is not a guarantee against attacks. Without an attack environment its verdict is `INCOMPLETE`; mobile apps are reviewed statically in this version.
-- Antigravity tool names come from its documentation; open each generated agent once to confirm.
+- Antigravity tool names come from its documentation; open each generated agent once to confirm. `sat doctor` stops warning once a real run is recorded as `confirmed` in `adapters/antigravity/tools.json`.
+- Agents act with your GitHub identity: GitHub cannot tell your commands from theirs. That is why protection must bind admins too, and why `guard` refuses `gh pr merge` and any push to the base branch. A separate identity for the agents (an account without merge rights) is outside this version.
 
 ## License
 

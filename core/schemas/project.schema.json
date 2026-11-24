@@ -20,7 +20,8 @@
       "type": "object",
       "properties": {
         "base_branch": { "type": "string" },
-        "task_branch_prefix": { "type": "string" }
+        "task_branch_prefix": { "type": "string" },
+        "branch_protection": { "enum": ["required", "accepted_risk"], "description": "required: sat doctor is NOT READY until it can verify branch protection on base_branch (charter §14.2). accepted_risk: the owner accepts merging without it." }
       }
     },
     "commands": {

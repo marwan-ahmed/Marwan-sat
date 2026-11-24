@@ -11,6 +11,7 @@ project:
 git:
   base_branch: {{base_branch}}
   task_branch_prefix: sat/
+  branch_protection: required  # required | accepted_risk — الدمج بيدك وحدك (الميثاق §14.2). لا تغيّرها إلا بقرار موثّق
 
 commands:
   install: null
