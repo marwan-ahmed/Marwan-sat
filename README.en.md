@@ -2,7 +2,7 @@
 
 **A governed seven-agent software team with deterministic gates, installable in any project.**
 
-> Version `0.4.0` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
+> Version `0.5.0` — **experimental**. Not yet validated on a real project (charter §17). The charter and the Arabic README are the reference.
 
 Marwan SAT is not "a smarter agent". It is **governance around agents**: who writes what, when, with what evidence, and who decides.
 
@@ -51,15 +51,32 @@ SAT is installed into each project separately (a git repo with at least one comm
 
 ```bash
 cd /path/to/your-project
-npx github:marwan-ahmed/marwan-sat#v0.4.0 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
-npx github:marwan-ahmed/marwan-sat#v0.4.0 doctor
+npx github:marwan-ahmed/marwan-sat#v0.5.0 init --stack nextjs   # nextjs | laravel | flutter | react-native | custom
+npx github:marwan-ahmed/marwan-sat#v0.5.0 doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.4.0"
+git commit -m "chore: install Marwan SAT 0.5.0"
 ```
 
-`#v0.4.0` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
+`#v0.5.0` pins the version. To update later: `npx github:marwan-ahmed/marwan-sat#<newer-tag> update`.
 
 **Upgrading from 0.1.x to 0.2.0:** agent names now start with `marwan-sat-` (for example `marwan-sat-tech-manager`). Finish any active task first, then run `update`: it removes the old agent files. Then pick `marwan-sat-tech-manager` again in Antigravity.
+
+**Upgrading to 0.5.0:**
+- **What it adds:**
+  - The tools run git for the owner: commit, push, and open the pull request.
+  - Pressing Merge on GitHub is the approval at Gate 2. «اعتمد النتيجة» is now only for accepting risks the report names.
+  - One-approval team updates: ask «حدّث الفريق», then reply «نفّذ التحديث».
+- **The first upgrade to this version is manual,** because the team-update instructions arrive with it. On the project's main branch, with no task in progress:
+  ```bash
+  npx github:marwan-ahmed/marwan-sat#v0.5.0 update --approve "نفّذ التحديث"
+  ```
+  It creates an update branch, pushes it and opens the pull request. Press Merge.
+- **What it changes:**
+  - A task waiting at Gate 2: press Merge on its pull request, and it closes when the next task starts. If it has no pull request, run `node .team/bin/phase.mjs ship` to open one.
+  - No `project.yaml` change is needed.
+- **After merging:** start a new conversation with the tech manager.
+
+**Upgrading to 0.4.1:** `sat doctor` now actually verifies the main branch's protection, so a project that was READY may now be NOT READY. Either turn the protection on (a private repo needs GitHub Pro), or add `branch_protection: accepted_risk` under `git:` in `.team/project.yaml` and record why in `.team/DECISIONS.md`. This verdict does not block starting tasks.
 
 **Upgrading to 0.4.0:**
 - **What it adds:**

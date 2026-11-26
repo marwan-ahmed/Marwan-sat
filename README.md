@@ -2,7 +2,7 @@
 
 **فريق برمجي من سبعة وكلاء ذكاء اصطناعي، بضوابط حتمية، يُثبَّت في أي مشروع.**
 
-> الإصدار `0.4.0` — **تجريبي**. لم يمر بعد بالتجربة الأولى على مشروع حقيقي (الميثاق §17).
+> الإصدار `0.5.0` — **تجريبي**. لم يمر بعد بالتجربة الأولى على مشروع حقيقي (الميثاق §17).
 > [English summary](README.en.md) · الترخيص: [MIT](#الترخيص) © 2026 مروان أحمد
 >
 > **جديد على Antigravity أو على git؟** ابدأ من [دليل المبتدئين: تشغيل SAT في Antigravity خطوة بخطوة](docs/ANTIGRAVITY_GUIDE.md).
@@ -138,17 +138,32 @@ Marwan SAT ليس «وكيلاً أذكى». هو **نظام حوكمة** حول
 لا تحتاج إلى استنساخ SAT. من داخل مجلد مشروعك:
 
 ```bash
-npx github:marwan-ahmed/marwan-sat#v0.4.0 init --stack nextjs
-npx github:marwan-ahmed/marwan-sat#v0.4.0 doctor
+npx github:marwan-ahmed/marwan-sat#v0.5.0 init --stack nextjs
+npx github:marwan-ahmed/marwan-sat#v0.5.0 doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.4.0"
+git commit -m "chore: install Marwan SAT 0.5.0"
 ```
 
 - `--stack`: `nextjs` أو `laravel` أو `flutter` أو `react-native` أو `custom`. إن حذفته يحاول `init` اكتشافه من ملفات المشروع.
-- `#v0.4.0` يثبّت الإصدار. بدونه تحصل على آخر نسخة في الفرع الرئيسي، وقد تتغير بين مشروع وآخر.
+- `#v0.5.0` يثبّت الإصدار. بدونه تحصل على آخر نسخة في الفرع الرئيسي، وقد تتغير بين مشروع وآخر.
 - **لماذا هذه المسارات تحديداً لا `git add -A`؟** لأن `-A` يضيف كل تغيير غير محفوظ في مشروعك، فيختلط عملك بملفات SAT في commit واحد برسالة لا تصفه.
 - **التحديث لاحقاً:** الأمر نفسه مع الوسم الأحدث وكلمة `update`: `npx github:marwan-ahmed/marwan-sat#<الوسم-الأحدث> update`.
 - **الترقية من 0.1.x إلى 0.2.0:** أسماء الوكلاء صارت تبدأ بـ`marwan-sat-`، مثل `marwan-sat-tech-manager`. أكمل أي مهمة جارية أولاً، ثم نفّذ `update`، فيحذف ملفات الوكلاء القديمة تلقائياً. بعدها اختر `marwan-sat-tech-manager` من جديد في Antigravity.
+- **الترقية إلى 0.5.0:**
+  - **ما أُضيف:**
+    - الأدوات تتولى عنك أوامر git: الحفظ، ورفع الفرع، وفتح طلب الدمج.
+    - ضغطة Merge على GitHub هي الاعتماد في البوابة 2. وتبقى «اعتمد النتيجة» لقبول المخاطر التي يذكرها التقرير فقط.
+    - تحديث الفريق بموافقة واحدة: تطلب «حدّث الفريق»، ثم ترد «نفّذ التحديث».
+  - **أول ترقية إلى هذا الإصدار تكون يدوية،** لأن تعليمات تحديث الفريق تصل معه. من الفرع الرئيسي للمشروع، وبلا مهمة جارية:
+    ```bash
+    npx github:marwan-ahmed/marwan-sat#v0.5.0 update --approve "نفّذ التحديث"
+    ```
+    ينشئ الأمر فرعاً للتحديث، ويرفعه، ويفتح طلب الدمج. اضغط Merge.
+  - **ما تغيّر عليك:**
+    - المهمة الواقفة عند البوابة 2: اضغط Merge على طلب دمجها، فتُغلق عند بدء المهمة التالية. وإن لم يكن لها طلب دمج، فشغّل `node .team/bin/phase.mjs ship` ليُفتح.
+    - لا يلزم تعديل `project.yaml`.
+  - **بعد الدمج:** ابدأ محادثة جديدة مع المدير التقني.
+- **الترقية إلى 0.4.1:** صار `sat doctor` يتحقق فعلاً من حماية الفرع الرئيسي، فقد يقول «غير جاهز» في مشروع كان «جاهزاً». الحل أحد أمرين: تفعيل الحماية (المستودع الخاص يحتاج GitHub Pro)، أو كتابة `branch_protection: accepted_risk` تحت `git:` في `.team/project.yaml` مع تسجيل السبب في `.team/DECISIONS.md`. هذا الحكم لا يمنع بدء المهام.
 - **الترقية إلى 0.4.0:**
   - **ما أُضيف:**
     - مسار التدقيق (الميثاق §5.5).
@@ -175,7 +190,7 @@ cd /path/to/your-project
 sat init --stack nextjs
 sat doctor
 git add .team .agents .github/workflows/sat-verify.yml .gitignore
-git commit -m "chore: install Marwan SAT 0.4.0"
+git commit -m "chore: install Marwan SAT 0.5.0"
 ```
 
 - **التحديث:** اطلب من المدير التقني «حدّث الفريق» (يعرض الجديد، ثم يحدّث في فرع مستقل بعد ردّك «نفّذ التحديث»). أو يدوياً للمطوّر: `git pull` داخل مجلد `marwan-sat`، ثم `sat update` على الفرع الرئيسي للمشروع.
